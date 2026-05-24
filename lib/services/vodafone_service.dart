@@ -3,7 +3,7 @@ import 'package:http/http.dart' as http;
 
 class VodafoneService {
   static const String _configUrl =
-      'https://TV-T5.github.io/team_mufasa1/config.json';
+      'https://alaarafeek5522-ai.github.io/config_app/config.json';
 
   static Future<Map<String, dynamic>> fetchRemoteConfig() async {
     try {
