@@ -8,8 +8,11 @@ class VodafoneService {
   static Future<Map<String, dynamic>> fetchRemoteConfig() async {
     try {
       final res = await http
-          .get(Uri.parse(_configUrl))
-          .timeout(const Duration(seconds: 10));
+          .get(
+            Uri.parse(_configUrl),
+            headers: {'Cache-Control': 'no-cache', 'Pragma': 'no-cache'},
+          )
+          .timeout(const Duration(seconds: 4));
       if (res.statusCode == 200) return jsonDecode(res.body);
     } catch (_) {}
     return {};
@@ -31,7 +34,7 @@ class VodafoneService {
           'Accept-Language': 'ar',
           'Accept-Encoding': 'gzip',
         },
-      ).timeout(const Duration(seconds: 8));
+      ).timeout(const Duration(seconds: 5));
       if (res.statusCode == 200) {
         final data = jsonDecode(res.body);
         return data['msisdn'] != null;
@@ -48,8 +51,7 @@ class VodafoneService {
         'User-Agent': 'okhttp/4.11.0',
         'Connection': 'Keep-Alive',
         'Accept-Encoding': 'gzip',
-        'x-dynatrace':
-            'MT_3_5_2386790616_1-0_a556db1b-4506-43f3-854a-1d2527767923_0_21317_157',
+        'x-dynatrace': 'MT_3_5_2386790616_1-0_a556db1b-4506-43f3-854a-1d2527767923_0_21317_157',
         'x-agent-operatingsystem': '13',
         'clientId': 'AnaVodafoneAndroid',
         'Accept-Language': 'ar',
@@ -73,8 +75,7 @@ class VodafoneService {
         'silentLogin': 'true',
         'seamlessToken': seamlessToken,
         'firstTimeLogin': 'true',
-        'x-dynatrace':
-            'MT_3_5_2386790616_1-0_a556db1b-4506-43f3-854a-1d2527767923_0_21520_165',
+        'x-dynatrace': 'MT_3_5_2386790616_1-0_a556db1b-4506-43f3-854a-1d2527767923_0_21520_165',
         'x-agent-operatingsystem': '13',
         'clientId': 'AnaVodafoneAndroid',
         'Accept-Language': 'ar',
@@ -131,8 +132,7 @@ class VodafoneService {
         senderMsisdn.startsWith('0') ? senderMsisdn : '0$senderMsisdn';
 
     final res = await http.post(
-      Uri.parse(
-          'https://mobile.vodafone.com.eg/services/dxl/pom/productOrder'),
+      Uri.parse('https://mobile.vodafone.com.eg/services/dxl/pom/productOrder'),
       headers: {
         'User-Agent': 'okhttp/4.11.0',
         'Connection': 'Keep-Alive',
@@ -141,8 +141,7 @@ class VodafoneService {
         'Content-Type': 'application/json',
         'api-host': 'ProductOrderingManagement',
         'useCase': 'CashFakkaAndMared',
-        'x-dynatrace':
-            'MT_3_5_2386790616_1-0_a556db1b-4506-43f3-854a-1d2527767923_0_2_160',
+        'x-dynatrace': 'MT_3_5_2386790616_1-0_a556db1b-4506-43f3-854a-1d2527767923_0_2_160',
         'api-version': 'v2',
         'msisdn': msisdn,
         'Authorization': 'Bearer $accessToken',

@@ -36,7 +36,7 @@ class _SplashScreenState extends State<SplashScreen>
       duration: const Duration(milliseconds: 1200),
     )..repeat(reverse: true);
 
-    Future.delayed(const Duration(milliseconds: 1800), _startChecks);
+    Future.delayed(const Duration(milliseconds: 1500), _startChecks);
   }
 
   Future<void> _startChecks() async {
@@ -50,14 +50,16 @@ class _SplashScreenState extends State<SplashScreen>
 
     if (config['force_update'] == true) {
       _showUpdateDialog(
-        config['update_message'] ?? 'يوجد تحديث إجباري',
+        config['update_message'] ?? 'يوجد تحديث جديد',
         config['update_url'] ?? '',
+        config['update_version'] ?? '',
+        config['update_features'] ?? '',
       );
       return;
     }
 
     setState(() => _status = 'جاهز...');
-    await Future.delayed(const Duration(milliseconds: 400));
+    await Future.delayed(const Duration(milliseconds: 300));
 
     if (mounted) {
       Navigator.of(context).pushReplacement(
@@ -65,7 +67,7 @@ class _SplashScreenState extends State<SplashScreen>
           pageBuilder: (_, a, __) => const HomeScreen(),
           transitionsBuilder: (_, a, __, child) =>
               FadeTransition(opacity: a, child: child),
-          transitionDuration: const Duration(milliseconds: 600),
+          transitionDuration: const Duration(milliseconds: 500),
         ),
       );
     }
@@ -75,15 +77,17 @@ class _SplashScreenState extends State<SplashScreen>
     showDialog(
       context: context,
       barrierDismissible: false,
-      builder: (_) => _StyledDialog(
+      builder: (_) => _FancyDialog(
         icon: Icons.block_rounded,
         iconColor: Colors.red,
+        gradientColors: const [Color(0xFF1A0000), Color(0xFF0D0D0D)],
+        borderColor: Colors.red,
         title: 'التطبيق متوقف',
         message: msg,
         actions: [
-          _DialogButton(
+          _FancyButton(
             label: 'خروج',
-            color: AppTheme.redVF,
+            gradient: const LinearGradient(colors: [Colors.red, Color(0xFF8B0000)]),
             onTap: () => SystemNavigator.pop(),
           ),
         ],
@@ -91,19 +95,24 @@ class _SplashScreenState extends State<SplashScreen>
     );
   }
 
-  void _showUpdateDialog(String msg, String url) {
+  void _showUpdateDialog(String msg, String url, String version, String features) {
     showDialog(
       context: context,
       barrierDismissible: false,
-      builder: (_) => _StyledDialog(
+      builder: (_) => _FancyDialog(
         icon: Icons.system_update_rounded,
         iconColor: AppTheme.gold,
-        title: 'تحديث إجباري',
+        gradientColors: const [Color(0xFF1A1500), Color(0xFF0D0D0D)],
+        borderColor: AppTheme.gold,
+        title: 'تحديث جديد ${version.isNotEmpty ? "v$version" : ""}',
         message: msg,
+        features: features,
         actions: [
-          _DialogButton(
-            label: 'تحديث الآن',
-            color: AppTheme.gold,
+          _FancyButton(
+            label: '⬇️  تحديث الآن',
+            gradient: const LinearGradient(
+              colors: [AppTheme.gold, Color(0xFFB8860B)],
+            ),
             onTap: () async {
               if (url.isNotEmpty) {
                 await launchUrl(Uri.parse(url),
@@ -185,9 +194,9 @@ class _SplashScreenState extends State<SplashScreen>
                 const SizedBox(height: 40),
 
                 Text(
-                  'Card Vodafone',
+                  '𝐂𝐚𝐫𝐝 𝐕𝐨𝐝𝐚𝐟𝐨𝐧𝐞',
                   style: GoogleFonts.cairo(
-                    fontSize: 32,
+                    fontSize: 30,
                     fontWeight: FontWeight.w900,
                     foreground: Paint()
                       ..shader = const LinearGradient(
@@ -228,8 +237,7 @@ class _SplashScreenState extends State<SplashScreen>
                     children: [
                       Text(
                         _status,
-                        style: GoogleFonts.cairo(
-                            color: AppTheme.grey, fontSize: 13),
+                        style: GoogleFonts.cairo(color: AppTheme.grey, fontSize: 13),
                         textAlign: TextAlign.center,
                       ),
                       const SizedBox(height: 12),
@@ -237,8 +245,7 @@ class _SplashScreenState extends State<SplashScreen>
                         borderRadius: BorderRadius.circular(8),
                         child: const LinearProgressIndicator(
                           backgroundColor: AppTheme.darkCard,
-                          valueColor:
-                              AlwaysStoppedAnimation(AppTheme.redVF),
+                          valueColor: AlwaysStoppedAnimation(AppTheme.redVF),
                           minHeight: 3,
                         ),
                       ),
@@ -254,6 +261,187 @@ class _SplashScreenState extends State<SplashScreen>
   }
 }
 
+// ========== Dialog فخم ==========
+class _FancyDialog extends StatelessWidget {
+  final IconData icon;
+  final Color iconColor;
+  final List<Color> gradientColors;
+  final Color borderColor;
+  final String title;
+  final String message;
+  final String? features;
+  final List<Widget> actions;
+
+  const _FancyDialog({
+    required this.icon,
+    required this.iconColor,
+    required this.gradientColors,
+    required this.borderColor,
+    required this.title,
+    required this.message,
+    this.features,
+    required this.actions,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Dialog(
+      backgroundColor: Colors.transparent,
+      child: Container(
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            colors: gradientColors,
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+          ),
+          borderRadius: BorderRadius.circular(24),
+          border: Border.all(color: borderColor.withOpacity(0.5), width: 1.5),
+          boxShadow: [
+            BoxShadow(
+              color: borderColor.withOpacity(0.2),
+              blurRadius: 30,
+              spreadRadius: 5,
+            ),
+          ],
+        ),
+        child: Padding(
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              // أيقونة مع توهج
+              Container(
+                padding: const EdgeInsets.all(18),
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: iconColor.withOpacity(0.15),
+                  border: Border.all(color: iconColor.withOpacity(0.3), width: 1.5),
+                  boxShadow: [
+                    BoxShadow(
+                      color: iconColor.withOpacity(0.2),
+                      blurRadius: 20,
+                      spreadRadius: 3,
+                    ),
+                  ],
+                ),
+                child: Icon(icon, color: iconColor, size: 44),
+              ),
+
+              const SizedBox(height: 20),
+
+              // العنوان
+              Text(
+                title,
+                style: GoogleFonts.cairo(
+                  color: AppTheme.white,
+                  fontSize: 20,
+                  fontWeight: FontWeight.w900,
+                  letterSpacing: 0.5,
+                ),
+                textAlign: TextAlign.center,
+              ),
+
+              const SizedBox(height: 10),
+
+              // فاصل
+              Container(
+                height: 1,
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: [
+                      Colors.transparent,
+                      borderColor.withOpacity(0.5),
+                      Colors.transparent,
+                    ],
+                  ),
+                ),
+              ),
+
+              const SizedBox(height: 12),
+
+              // الرسالة
+              Text(
+                message,
+                style: GoogleFonts.cairo(color: AppTheme.grey, fontSize: 14),
+                textAlign: TextAlign.center,
+              ),
+
+              // المميزات لو موجودة
+              if (features != null && features!.isNotEmpty) ...[
+                const SizedBox(height: 12),
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: iconColor.withOpacity(0.08),
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: iconColor.withOpacity(0.2)),
+                  ),
+                  child: Text(
+                    features!,
+                    style: GoogleFonts.cairo(
+                      color: iconColor,
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
+                    ),
+                    textAlign: TextAlign.center,
+                  ),
+                ),
+              ],
+
+              const SizedBox(height: 20),
+              ...actions,
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _FancyButton extends StatelessWidget {
+  final String label;
+  final LinearGradient gradient;
+  final VoidCallback onTap;
+  const _FancyButton({required this.label, required this.gradient, required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(top: 8),
+      child: SizedBox(
+        width: double.infinity,
+        height: 50,
+        child: ElevatedButton(
+          style: ElevatedButton.styleFrom(
+            backgroundColor: Colors.transparent,
+            shadowColor: Colors.transparent,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+            padding: EdgeInsets.zero,
+          ),
+          onPressed: onTap,
+          child: Ink(
+            decoration: BoxDecoration(
+              gradient: gradient,
+              borderRadius: BorderRadius.circular(14),
+            ),
+            child: Center(
+              child: Text(
+                label,
+                style: GoogleFonts.cairo(
+                  color: Colors.white,
+                  fontWeight: FontWeight.bold,
+                  fontSize: 16,
+                ),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+// ========== Orbit Painter ==========
 class _OrbitPainter extends CustomPainter {
   final double progress;
   _OrbitPainter(this.progress);
@@ -284,6 +472,7 @@ class _OrbitPainter extends CustomPainter {
   bool shouldRepaint(_OrbitPainter old) => old.progress != progress;
 }
 
+// ========== Glow Background ==========
 class _GlowBackground extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
@@ -313,89 +502,5 @@ class _GlowBackground extends StatelessWidget {
         ),
       ),
     ]);
-  }
-}
-
-class _StyledDialog extends StatelessWidget {
-  final IconData icon;
-  final Color iconColor;
-  final String title;
-  final String message;
-  final List<Widget> actions;
-
-  const _StyledDialog({
-    required this.icon,
-    required this.iconColor,
-    required this.title,
-    required this.message,
-    required this.actions,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Dialog(
-      backgroundColor: AppTheme.darkCard,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-      child: Padding(
-        padding: const EdgeInsets.all(24),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Container(
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                color: iconColor.withOpacity(0.15),
-              ),
-              child: Icon(icon, color: iconColor, size: 40),
-            ),
-            const SizedBox(height: 16),
-            Text(title,
-                style: GoogleFonts.cairo(
-                    color: AppTheme.white,
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold)),
-            const SizedBox(height: 10),
-            Text(message,
-                style: GoogleFonts.cairo(color: AppTheme.grey, fontSize: 14),
-                textAlign: TextAlign.center),
-            const SizedBox(height: 20),
-            ...actions,
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _DialogButton extends StatelessWidget {
-  final String label;
-  final Color color;
-  final VoidCallback onTap;
-  const _DialogButton(
-      {required this.label, required this.color, required this.onTap});
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.only(top: 8),
-      child: SizedBox(
-        width: double.infinity,
-        child: ElevatedButton(
-          style: ElevatedButton.styleFrom(
-            backgroundColor: color,
-            shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12)),
-            padding: const EdgeInsets.symmetric(vertical: 14),
-          ),
-          onPressed: onTap,
-          child: Text(label,
-              style: GoogleFonts.cairo(
-                  color: Colors.white,
-                  fontWeight: FontWeight.bold,
-                  fontSize: 15)),
-        ),
-      ),
-    );
   }
 }
