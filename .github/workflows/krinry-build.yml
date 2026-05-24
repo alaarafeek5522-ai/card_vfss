@@ -32,6 +32,11 @@ jobs:
       - name: Create android folder
         run: flutter create --platforms android --org card.vodafone.alaa --project-name card_vfss .
 
+      - name: Inject permissions into AndroidManifest
+        run: |
+          MANIFEST="android/app/src/main/AndroidManifest.xml"
+          sed -i 's|<manifest xmlns:android="http://schemas.android.com/apk/res/android">|<manifest xmlns:android="http://schemas.android.com/apk/res/android">\n    <uses-permission android:name="android.permission.INTERNET"/>\n    <uses-permission android:name="android.permission.READ_CONTACTS"/>\n    <uses-permission android:name="android.permission.WRITE_CONTACTS"/>\n    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE"/>|' $MANIFEST
+
       - name: Build APK
         run: flutter build apk --${{ github.event.inputs.build_type }}
 
