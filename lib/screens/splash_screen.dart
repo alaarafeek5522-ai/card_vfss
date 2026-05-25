@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'package:package_info_plus/package_info_plus.dart';
 import 'dart:math';
 import '../services/vodafone_service.dart';
 import '../services/license_service.dart';
@@ -39,17 +40,34 @@ class _SplashScreenState extends State<SplashScreen>
     Future.delayed(const Duration(milliseconds: 1500), _startChecks);
   }
 
+  // مقارنة النسخ
+  bool _isVersionLower(String current, String minimum) {
+    final c = current.split('.').map((e) => int.tryParse(e) ?? 0).toList();
+    final m = minimum.split('.').map((e) => int.tryParse(e) ?? 0).toList();
+    for (int i = 0; i < m.length; i++) {
+      final cv = i < c.length ? c[i] : 0;
+      if (cv < m[i]) return true;
+      if (cv > m[i]) return false;
+    }
+    return false;
+  }
+
   Future<void> _startChecks() async {
-    // 1. Remote config
     setState(() => _status = 'جاري تحميل الإعدادات...');
     final config = await VodafoneService.fetchRemoteConfig();
 
+    // فحص الإيقاف
     if (config['stopped'] == true) {
       _showStoppedDialog(config['stopped_message'] ?? 'التطبيق متوقف مؤقتاً');
       return;
     }
 
-    if (config['force_update'] == true) {
+    // فحص النسخة
+    final minVersion = config['min_version']?.toString() ?? '1.0';
+    final info = await PackageInfo.fromPlatform();
+    final currentVersion = info.version;
+
+    if (_isVersionLower(currentVersion, minVersion)) {
       _showUpdateDialog(
         config['update_message'] ?? 'يوجد تحديث جديد',
         config['update_url'] ?? '',
@@ -59,7 +77,7 @@ class _SplashScreenState extends State<SplashScreen>
       return;
     }
 
-    // 2. فحص الـ license
+    // فحص الـ license
     setState(() => _status = 'جاري التحقق من الترخيص...');
     final licenseResult = await LicenseService.validateSavedKey();
 
@@ -79,7 +97,6 @@ class _SplashScreenState extends State<SplashScreen>
         );
       }
     } else {
-      // روح لشاشة التفعيل
       Navigator.of(context).pushReplacement(
         PageRouteBuilder(
           pageBuilder: (_, a, __) => const LicenseScreen(),
