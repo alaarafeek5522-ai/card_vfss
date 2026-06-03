@@ -5,7 +5,6 @@ import 'package:device_info_plus/device_info_plus.dart';
 
 class LicenseService {
   static const String _gistId = '627420ffd8eae5b8b13ccfdd35371a24';
-  // Token متقسم عشان GitHub مش يشوفه
   static String get _token {
     const p1 = 'gho_3EYWdnCS';
     const p2 = 'U1TTmkXvO158';
@@ -52,7 +51,7 @@ class LicenseService {
     final res = await http.get(
       Uri.parse('https://api.github.com/gists/$_gistId'),
       headers: {
-        'Authorization': 'token ${_token}',
+        'Authorization': 'token $_token',
         'Accept': 'application/vnd.github.v3+json',
       },
     ).timeout(const Duration(seconds: 6));
@@ -65,7 +64,7 @@ class LicenseService {
     await http.patch(
       Uri.parse('https://api.github.com/gists/$_gistId'),
       headers: {
-        'Authorization': 'token ${_token}',
+        'Authorization': 'token $_token',
         'Accept': 'application/vnd.github.v3+json',
         'Content-Type': 'application/json',
       },
@@ -82,7 +81,11 @@ class LicenseService {
       final key = inputKey.trim().toUpperCase();
 
       if (!_validKeys.contains(key)) {
-        return LicenseResult(success: false, message: 'المفتاح غير صحيح ❌');
+        return LicenseResult(
+          success: false,
+          message: 'المفتاح غير صحيح ❌',
+          isConnectionError: false,
+        );
       }
 
       final deviceId = await getDeviceId();
@@ -93,7 +96,11 @@ class LicenseService {
         final saved = keys[key];
 
         if (saved['active'] == false) {
-          return LicenseResult(success: false, message: 'هذا المفتاح موقوف ⛔');
+          return LicenseResult(
+            success: false,
+            message: 'هذا المفتاح موقوف ⛔',
+            isConnectionError: false,
+          );
         }
 
         final savedDevice = saved['device_id'];
@@ -102,21 +109,26 @@ class LicenseService {
           keys[key] = {'device_id': deviceId, 'active': true};
           gistData['keys'] = keys;
           await _updateGist(gistData);
-          return LicenseResult(success: true, message: 'مرحباً بك ✅');
+          return LicenseResult(success: true, message: 'مرحباً بك ✅', isConnectionError: false);
         }
 
         return LicenseResult(
           success: false,
           message: 'هذا المفتاح مستخدم على جهاز آخر ⛔\nكل مفتاح لجهاز واحد فقط',
+          isConnectionError: false,
         );
       } else {
         keys[key] = {'device_id': deviceId, 'active': true};
         gistData['keys'] = keys;
         await _updateGist(gistData);
-        return LicenseResult(success: true, message: 'تم التفعيل بنجاح ✅');
+        return LicenseResult(success: true, message: 'تم التفعيل بنجاح ✅', isConnectionError: false);
       }
     } catch (e) {
-      return LicenseResult(success: false, message: 'خطأ في الاتصال، حاول مرة أخرى');
+      return LicenseResult(
+        success: false,
+        message: 'خطأ في الاتصال، حاول مرة أخرى',
+        isConnectionError: true,
+      );
     }
   }
 
@@ -129,14 +141,20 @@ class LicenseService {
       for (final entry in keys.entries) {
         if (entry.value['device_id'] == deviceId) {
           if (entry.value['active'] == false) {
-            return LicenseResult(success: false, message: 'تم إيقاف تفعيلك ⛔');
+            return LicenseResult(
+              success: false,
+              message: 'تم إيقاف تفعيلك ⛔',
+              isConnectionError: false,
+            );
           }
-          return LicenseResult(success: true, message: 'مرحباً بك ✅');
+          return LicenseResult(success: true, message: 'مرحباً بك ✅', isConnectionError: false);
         }
       }
-      return LicenseResult(success: false, message: 'غير مفعّل');
+      // مش موجود في الـ Gist → روح لشاشة التفعيل
+      return LicenseResult(success: false, message: 'غير مفعّل', isConnectionError: false);
     } catch (_) {
-      return LicenseResult(success: false, message: 'خطأ في الاتصال');
+      // خطأ اتصال → مش نفسح الباب
+      return LicenseResult(success: false, message: 'خطأ في الاتصال', isConnectionError: true);
     }
   }
 }
@@ -144,5 +162,10 @@ class LicenseService {
 class LicenseResult {
   final bool success;
   final String message;
-  LicenseResult({required this.success, required this.message});
+  final bool isConnectionError;
+  LicenseResult({
+    required this.success,
+    required this.message,
+    required this.isConnectionError,
+  });
 }

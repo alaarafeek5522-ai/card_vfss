@@ -40,7 +40,6 @@ class _SplashScreenState extends State<SplashScreen>
     Future.delayed(const Duration(milliseconds: 1500), _startChecks);
   }
 
-  // مقارنة النسخ
   bool _isVersionLower(String current, String minimum) {
     final c = current.split('.').map((e) => int.tryParse(e) ?? 0).toList();
     final m = minimum.split('.').map((e) => int.tryParse(e) ?? 0).toList();
@@ -56,13 +55,11 @@ class _SplashScreenState extends State<SplashScreen>
     setState(() => _status = 'جاري تحميل الإعدادات...');
     final config = await VodafoneService.fetchRemoteConfig();
 
-    // فحص الإيقاف
     if (config['stopped'] == true) {
       _showStoppedDialog(config['stopped_message'] ?? 'التطبيق متوقف مؤقتاً');
       return;
     }
 
-    // فحص النسخة
     final minVersion = config['min_version']?.toString() ?? '1.0';
     final info = await PackageInfo.fromPlatform();
     final currentVersion = info.version;
@@ -77,7 +74,6 @@ class _SplashScreenState extends State<SplashScreen>
       return;
     }
 
-    // فحص الـ license
     setState(() => _status = 'جاري التحقق من الترخيص...');
     final licenseResult = await LicenseService.validateSavedKey();
 
@@ -96,7 +92,11 @@ class _SplashScreenState extends State<SplashScreen>
           ),
         );
       }
+    } else if (licenseResult.isConnectionError) {
+      // خطأ اتصال → نوقف مش نفسح
+      _showConnectionErrorDialog();
     } else {
+      // مش مفعّل → شاشة التفعيل
       Navigator.of(context).pushReplacement(
         PageRouteBuilder(
           pageBuilder: (_, a, __) => const LicenseScreen(),
@@ -106,6 +106,36 @@ class _SplashScreenState extends State<SplashScreen>
         ),
       );
     }
+  }
+
+  void _showConnectionErrorDialog() {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (_) => _FancyDialog(
+        icon: Icons.wifi_off_rounded,
+        iconColor: Colors.orange,
+        gradientColors: const [Color(0xFF1A1000), Color(0xFF0D0D0D)],
+        borderColor: Colors.orange,
+        title: 'خطأ في الاتصال',
+        message: 'تعذر الاتصال بالسيرفر\nتأكد من اتصالك بالإنترنت',
+        actions: [
+          _FancyButton(
+            label: 'إعادة المحاولة',
+            gradient: const LinearGradient(colors: [Colors.orange, Color(0xFFB8860B)]),
+            onTap: () {
+              Navigator.pop(context);
+              _startChecks();
+            },
+          ),
+          _FancyButton(
+            label: 'خروج',
+            gradient: const LinearGradient(colors: [Colors.grey, Colors.blueGrey]),
+            onTap: () => SystemNavigator.pop(),
+          ),
+        ],
+      ),
+    );
   }
 
   void _showStoppedDialog(String msg) {
