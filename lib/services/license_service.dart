@@ -81,32 +81,29 @@ class LicenseService {
       final key = inputKey.trim().toUpperCase();
 
       if (!_validKeys.contains(key)) {
-        return LicenseResult(
-          success: false,
-          message: 'المفتاح غير صحيح ❌',
-          isConnectionError: false,
-        );
+        return LicenseResult(success: false, message: 'المفتاح غير صحيح ❌', isConnectionError: false);
       }
 
       final deviceId = await getDeviceId();
       final gistData = await _fetchGist();
       final keys = gistData['keys'] as Map<String, dynamic>? ?? {};
+      final now = DateTime.now().toIso8601String();
 
       if (keys.containsKey(key)) {
         final saved = keys[key];
 
         if (saved['active'] == false) {
-          return LicenseResult(
-            success: false,
-            message: 'هذا المفتاح موقوف ⛔',
-            isConnectionError: false,
-          );
+          return LicenseResult(success: false, message: 'هذا المفتاح موقوف ⛔', isConnectionError: false);
         }
 
         final savedDevice = saved['device_id'];
 
         if (savedDevice == null || savedDevice == deviceId) {
-          keys[key] = {'device_id': deviceId, 'active': true};
+          keys[key] = {
+            'device_id': deviceId,
+            'active': true,
+            'registered_at': saved['registered_at'] ?? now,
+          };
           gistData['keys'] = keys;
           await _updateGist(gistData);
           return LicenseResult(success: true, message: 'مرحباً بك ✅', isConnectionError: false);
@@ -118,17 +115,17 @@ class LicenseService {
           isConnectionError: false,
         );
       } else {
-        keys[key] = {'device_id': deviceId, 'active': true};
+        keys[key] = {
+          'device_id': deviceId,
+          'active': true,
+          'registered_at': now,
+        };
         gistData['keys'] = keys;
         await _updateGist(gistData);
         return LicenseResult(success: true, message: 'تم التفعيل بنجاح ✅', isConnectionError: false);
       }
     } catch (e) {
-      return LicenseResult(
-        success: false,
-        message: 'خطأ في الاتصال، حاول مرة أخرى',
-        isConnectionError: true,
-      );
+      return LicenseResult(success: false, message: 'خطأ في الاتصال، حاول مرة أخرى', isConnectionError: true);
     }
   }
 
@@ -141,19 +138,13 @@ class LicenseService {
       for (final entry in keys.entries) {
         if (entry.value['device_id'] == deviceId) {
           if (entry.value['active'] == false) {
-            return LicenseResult(
-              success: false,
-              message: 'تم إيقاف تفعيلك ⛔',
-              isConnectionError: false,
-            );
+            return LicenseResult(success: false, message: 'تم إيقاف تفعيلك ⛔', isConnectionError: false);
           }
           return LicenseResult(success: true, message: 'مرحباً بك ✅', isConnectionError: false);
         }
       }
-      // مش موجود في الـ Gist → روح لشاشة التفعيل
       return LicenseResult(success: false, message: 'غير مفعّل', isConnectionError: false);
     } catch (_) {
-      // خطأ اتصال → مش نفسح الباب
       return LicenseResult(success: false, message: 'خطأ في الاتصال', isConnectionError: true);
     }
   }
@@ -163,9 +154,5 @@ class LicenseResult {
   final bool success;
   final String message;
   final bool isConnectionError;
-  LicenseResult({
-    required this.success,
-    required this.message,
-    required this.isConnectionError,
-  });
+  LicenseResult({required this.success, required this.message, required this.isConnectionError});
 }
