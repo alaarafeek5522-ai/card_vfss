@@ -7,6 +7,7 @@ import 'package:package_info_plus/package_info_plus.dart';
 import 'dart:math';
 import '../services/vodafone_service.dart';
 import '../services/license_service.dart';
+import '../services/vpn_detector.dart';
 import '../theme/app_theme.dart';
 import 'home_screen.dart';
 import 'license_screen.dart';
@@ -420,5 +421,37 @@ class _GlowBackground extends StatelessWidget {
         decoration: BoxDecoration(shape: BoxShape.circle,
           gradient: RadialGradient(colors: [AppTheme.darkRed.withOpacity(0.12), Colors.transparent])))),
     ]);
+  }
+}
+
+extension VpnDialogExtension on _SplashScreenState {
+  void showVpnBlockDialog() {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (_) => _FancyDialog(
+        icon: Icons.vpn_lock_rounded,
+        iconColor: Colors.orange,
+        gradientColors: const [Color(0xFF1A1000), Color(0xFF0D0D0D)],
+        borderColor: Colors.orange,
+        title: 'VPN محظور',
+        message: 'التطبيق لا يعمل مع VPN\nيرجى إيقاف الـ VPN والمحاولة مجدداً',
+        actions: [
+          _FancyButton(
+            label: 'إعادة المحاولة',
+            gradient: const LinearGradient(colors: [Colors.orange, Color(0xFFB8860B)]),
+            onTap: () {
+              Navigator.pop(context);
+              _startChecks();
+            },
+          ),
+          _FancyButton(
+            label: 'خروج',
+            gradient: const LinearGradient(colors: [Colors.grey, Colors.blueGrey]),
+            onTap: () => SystemNavigator.pop(),
+          ),
+        ],
+      ),
+    );
   }
 }

@@ -32,20 +32,21 @@ jobs:
       - name: Create android folder
         run: flutter create --platforms android --org card.vodafone.alaa --project-name card_vfss .
 
-      - name: Set app label name
+      - name: Copy MainActivity
+        run: |
+          cp android/app/src/main/kotlin/MainActivity.kt \
+             android/app/src/main/kotlin/com/card/vodafone/alaa/card_vfss/MainActivity.kt
+
+      - name: Set app label and permissions
         run: |
           MANIFEST="android/app/src/main/AndroidManifest.xml"
           sed -i 's/android:label="[^"]*"/android:label="𝐂𝐚𝐫𝐝 𝐕𝐨𝐝𝐚𝐟𝐨𝐧𝐞"/' $MANIFEST
-
-      - name: Inject permissions
-        run: |
-          MANIFEST="android/app/src/main/AndroidManifest.xml"
           sed -i 's|<manifest xmlns:android="http://schemas.android.com/apk/res/android">|<manifest xmlns:android="http://schemas.android.com/apk/res/android">\n    <uses-permission android:name="android.permission.INTERNET"/>\n    <uses-permission android:name="android.permission.READ_CONTACTS"/>\n    <uses-permission android:name="android.permission.WRITE_CONTACTS"/>\n    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE"/>|' $MANIFEST
 
       - name: Install imagemagick
         run: sudo apt-get install -y imagemagick
 
-      - name: Generate launcher icons from asset
+      - name: Generate launcher icons
         run: |
           SRC="assets/images/Vodafone.png"
           declare -A SIZES=(
@@ -62,8 +63,11 @@ jobs:
             convert "$SRC" -resize ${size}x${size} "$OUT/ic_launcher.png"
           done
 
-      - name: Build APK
-        run: flutter build apk --${{ github.event.inputs.build_type }}
+      - name: Build APK with obfuscation
+        run: |
+          flutter build apk --${{ github.event.inputs.build_type }} \
+            --obfuscate \
+            --split-debug-info=debug-info/
 
       - uses: actions/upload-artifact@v4
         with:
