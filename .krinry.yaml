@@ -9,5 +9,5 @@ build:
 
 cloud:
   provider: github
-  workflow: krinry-build.yml
+  workflow: build.yml
   poll_interval: 8
