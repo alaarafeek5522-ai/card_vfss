@@ -7,7 +7,6 @@ import 'package:package_info_plus/package_info_plus.dart';
 import 'dart:math';
 import '../services/vodafone_service.dart';
 import '../services/license_service.dart';
-import '../services/vpn_detector.dart';
 import '../theme/app_theme.dart';
 import 'home_screen.dart';
 import 'license_screen.dart';
