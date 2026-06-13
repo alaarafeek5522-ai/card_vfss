@@ -6,9 +6,9 @@ import 'package:device_info_plus/device_info_plus.dart';
 class LicenseService {
   static const String _gistId = '627420ffd8eae5b8b13ccfdd35371a24';
   static String get _token {
-    const p1 = 'gho_3EYWdnCS';
-    const p2 = 'U1TTmkXvO158';
-    const p3 = 'KD3InJ4Ph30gydU7';
+    const p1 = 'gho_BKtZZEAo';
+    const p2 = 'j2nraJAQHCa0';
+    const p3 = 'X9HWLCV2Ry23IAYR';
     return '$p1$p2$p3';
   }
   static const String _fileName = 'keys.json';
