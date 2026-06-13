@@ -6,6 +6,7 @@ import 'package:flutter_contacts/flutter_contacts.dart';
 import 'package:permission_handler/permission_handler.dart';
 import '../models/card_model.dart';
 import '../services/vodafone_service.dart';
+import '../services/history_service.dart';
 import '../theme/app_theme.dart';
 
 class ChargeScreen extends StatefulWidget {
@@ -22,6 +23,18 @@ class _ChargeScreenState extends State<ChargeScreen> {
   bool _pinVisible = false;
   String? _resultMsg;
   bool? _success;
+  String? _lastReceiver;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadLastReceiver();
+  }
+
+  Future<void> _loadLastReceiver() async {
+    final last = await HistoryService.getLastReceiver();
+    setState(() => _lastReceiver = last);
+  }
 
   Future<void> _pickContact() async {
     final status = await Permission.contacts.request();
@@ -53,13 +66,8 @@ class _ChargeScreenState extends State<ChargeScreen> {
       return;
     }
 
-    setState(() {
-      _loading = true;
-      _resultMsg = null;
-      _success = null;
-    });
+    setState(() { _loading = true; _resultMsg = null; _success = null; });
 
-    // التحقق من داتا فودافون قبل الإرسال
     final isVF = await VodafoneService.isVodafoneNetwork();
     if (!isVF) {
       setState(() => _loading = false);
@@ -72,9 +80,7 @@ class _ChargeScreenState extends State<ChargeScreen> {
       final seamlessToken = seamless['seamlessToken'];
       final senderMsisdn = seamless['msisdn']?.toString() ?? '';
 
-      if (seamlessToken == null) {
-        throw Exception('فشل تسجيل الدخول - تأكد من داتا فودافون');
-      }
+      if (seamlessToken == null) throw Exception('فشل تسجيل الدخول - تأكد من داتا فودافون');
 
       final accessToken = await VodafoneService.getAccessToken(seamlessToken);
       if (accessToken == null) throw Exception('فشل الحصول على token');
@@ -87,18 +93,33 @@ class _ChargeScreenState extends State<ChargeScreen> {
         accessToken: accessToken,
       );
 
-      final ok =
-          result['state'] == 'Completed' || result['complete'] == true;
+      final ok = result['state'] == 'Completed' || result['complete'] == true;
+
+      // حفظ في السجل
+      final now = DateTime.now();
+      final dateStr = '${now.year}-${now.month.toString().padLeft(2,'0')}-${now.day.toString().padLeft(2,'0')} ${now.hour.toString().padLeft(2,'0')}:${now.minute.toString().padLeft(2,'0')}';
+      await HistoryService.addRecord(ChargeHistory(
+        cardName: widget.card.name,
+        cardPrice: widget.card.netCharge,
+        receiver: receiver,
+        date: dateStr,
+        success: ok,
+      ));
+
       setState(() {
         _success = ok;
-        _resultMsg =
-            ok ? '✅ تم الشحن بنجاح!' : (result['message'] ?? '❌ فشل الشحن');
+        _resultMsg = ok ? '✅ تم الشحن بنجاح!' : (result['message'] ?? '❌ فشل الشحن');
+        if (ok) _lastReceiver = receiver;
       });
     } catch (e) {
-      setState(() {
-        _success = false;
-        _resultMsg = '❌ ${e.toString()}';
-      });
+      await HistoryService.addRecord(ChargeHistory(
+        cardName: widget.card.name,
+        cardPrice: widget.card.netCharge,
+        receiver: receiver,
+        date: DateTime.now().toString().substring(0, 16),
+        success: false,
+      ));
+      setState(() { _success = false; _resultMsg = '❌ ${e.toString()}'; });
     } finally {
       setState(() => _loading = false);
     }
@@ -115,45 +136,23 @@ class _ChargeScreenState extends State<ChargeScreen> {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Container(
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  color: Colors.orange.withOpacity(0.15),
-                ),
-                child: const Icon(Icons.signal_cellular_off_rounded,
-                    color: Colors.orange, size: 40),
-              ),
+              Container(padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(shape: BoxShape.circle, color: Colors.orange.withOpacity(0.15)),
+                child: const Icon(Icons.signal_cellular_off_rounded, color: Colors.orange, size: 40)),
               const SizedBox(height: 16),
-              Text('شبكة غير مدعومة',
-                  style: GoogleFonts.cairo(
-                      color: AppTheme.white,
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold)),
+              Text('شبكة غير مدعومة', style: GoogleFonts.cairo(color: AppTheme.white, fontSize: 18, fontWeight: FontWeight.bold)),
               const SizedBox(height: 10),
-              Text(
-                'التطبيق يعمل فقط على داتا فودافون\nتأكد أنك متصل بداتا فودافون وليس واي فاي',
-                style: GoogleFonts.cairo(color: AppTheme.grey, fontSize: 14),
-                textAlign: TextAlign.center,
-              ),
+              Text('التطبيق يعمل فقط على داتا فودافون\nتأكد أنك متصل بداتا فودافون وليس واي فاي',
+                style: GoogleFonts.cairo(color: AppTheme.grey, fontSize: 14), textAlign: TextAlign.center),
               const SizedBox(height: 20),
-              SizedBox(
-                width: double.infinity,
+              SizedBox(width: double.infinity,
                 child: ElevatedButton(
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: AppTheme.redVF,
-                    shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12)),
-                    padding: const EdgeInsets.symmetric(vertical: 14),
-                  ),
+                  style: ElevatedButton.styleFrom(backgroundColor: AppTheme.redVF,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    padding: const EdgeInsets.symmetric(vertical: 14)),
                   onPressed: () => Navigator.pop(context),
-                  child: Text('حسناً',
-                      style: GoogleFonts.cairo(
-                          color: Colors.white,
-                          fontWeight: FontWeight.bold,
-                          fontSize: 15)),
-                ),
-              ),
+                  child: Text('حسناً', style: GoogleFonts.cairo(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 15)),
+                )),
             ],
           ),
         ),
@@ -181,9 +180,7 @@ class _ChargeScreenState extends State<ChargeScreen> {
           icon: const Icon(Icons.arrow_back_ios_rounded, color: AppTheme.white),
           onPressed: () => Navigator.pop(context),
         ),
-        title: Text(card.name,
-            style: GoogleFonts.cairo(
-                color: AppTheme.white, fontWeight: FontWeight.bold)),
+        title: Text(card.name, style: GoogleFonts.cairo(color: AppTheme.white, fontWeight: FontWeight.bold)),
         centerTitle: true,
       ),
       body: SingleChildScrollView(
@@ -191,9 +188,7 @@ class _ChargeScreenState extends State<ChargeScreen> {
         child: Column(
           children: [
             _CardDetails(card: card)
-                .animate()
-                .fadeIn(duration: 400.ms)
-                .slideY(begin: -0.1),
+                .animate().fadeIn(duration: 400.ms).slideY(begin: -0.1),
 
             const SizedBox(height: 28),
 
@@ -204,17 +199,41 @@ class _ChargeScreenState extends State<ChargeScreen> {
               keyboardType: TextInputType.phone,
               inputFormatters: [FilteringTextInputFormatter.digitsOnly],
               maxLength: 11,
-              style: GoogleFonts.cairo(
-                  color: AppTheme.white, fontSize: 18, letterSpacing: 2),
+              style: GoogleFonts.cairo(color: AppTheme.white, fontSize: 18, letterSpacing: 2),
               decoration: _inputDec(
                 hint: '01XXXXXXXXX',
                 suffix: IconButton(
                   icon: const Icon(Icons.contacts_rounded, color: AppTheme.gold),
                   onPressed: _pickContact,
-                  tooltip: 'اختر من جهات الاتصال',
                 ),
               ),
             ),
+
+            // آخر رقم شحنت له
+            if (_lastReceiver != null) ...[
+              const SizedBox(height: 4),
+              GestureDetector(
+                onTap: () => setState(() => _receiverCtrl.text = _lastReceiver!),
+                child: Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                  decoration: BoxDecoration(
+                    color: AppTheme.darkCard,
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: AppTheme.redVF.withOpacity(0.3)),
+                  ),
+                  child: Row(children: [
+                    const Icon(Icons.history_rounded, color: AppTheme.redVF, size: 16),
+                    const SizedBox(width: 8),
+                    Text('آخر رقم: $_lastReceiver',
+                      style: GoogleFonts.cairo(color: AppTheme.grey, fontSize: 13)),
+                    const Spacer(),
+                    Text('اضغط للاستخدام',
+                      style: GoogleFonts.cairo(color: AppTheme.redVF, fontSize: 11)),
+                  ]),
+                ),
+              ),
+            ],
 
             const SizedBox(height: 16),
 
@@ -225,17 +244,12 @@ class _ChargeScreenState extends State<ChargeScreen> {
               keyboardType: TextInputType.number,
               obscureText: !_pinVisible,
               inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-              style: GoogleFonts.cairo(
-                  color: AppTheme.white, fontSize: 18, letterSpacing: 4),
+              style: GoogleFonts.cairo(color: AppTheme.white, fontSize: 18, letterSpacing: 4),
               decoration: _inputDec(
                 hint: '••••••',
                 suffix: IconButton(
-                  icon: Icon(
-                    _pinVisible ? Icons.visibility_off : Icons.visibility,
-                    color: AppTheme.grey,
-                  ),
-                  onPressed: () =>
-                      setState(() => _pinVisible = !_pinVisible),
+                  icon: Icon(_pinVisible ? Icons.visibility_off : Icons.visibility, color: AppTheme.grey),
+                  onPressed: () => setState(() => _pinVisible = !_pinVisible),
                 ),
               ),
             ),
@@ -243,56 +257,33 @@ class _ChargeScreenState extends State<ChargeScreen> {
             const SizedBox(height: 32),
 
             SizedBox(
-              width: double.infinity,
-              height: 56,
+              width: double.infinity, height: 56,
               child: ElevatedButton(
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.transparent,
-                  shadowColor: Colors.transparent,
-                  shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(16)),
+                  backgroundColor: Colors.transparent, shadowColor: Colors.transparent,
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
                   padding: EdgeInsets.zero,
                 ),
                 onPressed: _loading ? null : _charge,
                 child: Ink(
                   decoration: BoxDecoration(
                     gradient: _loading
-                        ? const LinearGradient(
-                            colors: [Colors.grey, Colors.grey])
-                        : const LinearGradient(
-                            colors: [AppTheme.redVF, AppTheme.darkRed],
-                            begin: Alignment.topLeft,
-                            end: Alignment.bottomRight,
-                          ),
+                        ? const LinearGradient(colors: [Colors.grey, Colors.grey])
+                        : const LinearGradient(colors: [AppTheme.redVF, AppTheme.darkRed],
+                            begin: Alignment.topLeft, end: Alignment.bottomRight),
                     borderRadius: BorderRadius.circular(16),
-                    boxShadow: [
-                      BoxShadow(
-                        color: AppTheme.redVF.withOpacity(0.4),
-                        blurRadius: 15,
-                        offset: const Offset(0, 6),
-                      ),
-                    ],
+                    boxShadow: [BoxShadow(color: AppTheme.redVF.withOpacity(0.4), blurRadius: 15, offset: const Offset(0, 6))],
                   ),
                   child: Center(
                     child: _loading
-                        ? const SizedBox(
-                            width: 26, height: 26,
-                            child: CircularProgressIndicator(
-                                color: Colors.white, strokeWidth: 2.5),
-                          )
-                        : Row(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              const Icon(Icons.send_rounded,
-                                  color: Colors.white, size: 20),
-                              const SizedBox(width: 10),
-                              Text('إرسال الكارت',
-                                  style: GoogleFonts.cairo(
-                                      color: Colors.white,
-                                      fontSize: 17,
-                                      fontWeight: FontWeight.bold)),
-                            ],
-                          ),
+                        ? const SizedBox(width: 26, height: 26,
+                            child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2.5))
+                        : Row(mainAxisAlignment: MainAxisAlignment.center, children: [
+                            const Icon(Icons.send_rounded, color: Colors.white, size: 20),
+                            const SizedBox(width: 10),
+                            Text('إرسال الكارت',
+                              style: GoogleFonts.cairo(color: Colors.white, fontSize: 17, fontWeight: FontWeight.bold)),
+                          ]),
                   ),
                 ),
               ),
@@ -301,9 +292,7 @@ class _ChargeScreenState extends State<ChargeScreen> {
             if (_resultMsg != null) ...[
               const SizedBox(height: 24),
               _ResultCard(message: _resultMsg!, success: _success ?? false)
-                  .animate()
-                  .fadeIn(duration: 400.ms)
-                  .scale(begin: const Offset(0.9, 0.9)),
+                  .animate().fadeIn(duration: 400.ms).scale(begin: const Offset(0.9, 0.9)),
             ],
 
             const SizedBox(height: 40),
@@ -321,16 +310,10 @@ class _ChargeScreenState extends State<ChargeScreen> {
       fillColor: AppTheme.darkCard,
       counterStyle: const TextStyle(color: AppTheme.grey),
       suffixIcon: suffix,
-      border: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(14),
-        borderSide: BorderSide.none,
-      ),
-      focusedBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(14),
-        borderSide: const BorderSide(color: AppTheme.redVF, width: 1.5),
-      ),
-      contentPadding:
-          const EdgeInsets.symmetric(horizontal: 18, vertical: 18),
+      border: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: BorderSide.none),
+      focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(14),
+          borderSide: const BorderSide(color: AppTheme.redVF, width: 1.5)),
+      contentPadding: const EdgeInsets.symmetric(horizontal: 18, vertical: 18),
     );
   }
 }
@@ -344,142 +327,71 @@ class _CardDetails extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        gradient: const LinearGradient(
-          colors: [Color(0xFF1A0000), Color(0xFF0D0D0D)],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
+        gradient: const LinearGradient(colors: [Color(0xFF1A0000), Color(0xFF0D0D0D)],
+            begin: Alignment.topLeft, end: Alignment.bottomRight),
         borderRadius: BorderRadius.circular(20),
-        border:
-            Border.all(color: AppTheme.redVF.withOpacity(0.3), width: 1.5),
-        boxShadow: [
-          BoxShadow(
-              color: AppTheme.redVF.withOpacity(0.1),
-              blurRadius: 20,
-              spreadRadius: 2),
-        ],
+        border: Border.all(color: AppTheme.redVF.withOpacity(0.3), width: 1.5),
+        boxShadow: [BoxShadow(color: AppTheme.redVF.withOpacity(0.1), blurRadius: 20, spreadRadius: 2)],
       ),
       child: Row(
         children: [
-          Container(
-            width: 60, height: 60,
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
+          Container(width: 60, height: 60,
+            decoration: BoxDecoration(shape: BoxShape.circle,
               color: AppTheme.redVF.withOpacity(0.15),
-              border: Border.all(
-                  color: AppTheme.redVF.withOpacity(0.4), width: 1.5),
-            ),
+              border: Border.all(color: AppTheme.redVF.withOpacity(0.4), width: 1.5)),
             padding: const EdgeInsets.all(10),
-            child: Image.asset(
-              'assets/images/Vodafone.png',
-              errorBuilder: (_, __, ___) => const Icon(
-                  Icons.signal_cellular_alt,
-                  color: AppTheme.redVF,
-                  size: 28),
-            ),
-          ),
+            child: Image.asset('assets/images/Vodafone.png',
+              errorBuilder: (_, __, ___) => const Icon(Icons.signal_cellular_alt, color: AppTheme.redVF, size: 28))),
           const SizedBox(width: 16),
           Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(card.name,
-                    style: GoogleFonts.cairo(
-                        color: AppTheme.white,
-                        fontSize: 20,
-                        fontWeight: FontWeight.w900)),
-                const SizedBox(height: 6),
-                _DetailRow(
-                    icon: Icons.bolt,
-                    label: card.units,
-                    color: AppTheme.gold),
-                _DetailRow(
-                    icon: Icons.access_time,
-                    label: card.duration,
-                    color: Colors.blueAccent),
-              ],
-            ),
+            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Text(card.name, style: GoogleFonts.cairo(color: AppTheme.white, fontSize: 20, fontWeight: FontWeight.w900)),
+              const SizedBox(height: 6),
+              Row(children: [Icon(Icons.bolt, color: AppTheme.gold, size: 14), const SizedBox(width: 4),
+                Text(card.units, style: GoogleFonts.cairo(color: AppTheme.grey, fontSize: 12))]),
+              Row(children: [Icon(Icons.access_time, color: Colors.blueAccent, size: 14), const SizedBox(width: 4),
+                Text(card.duration, style: GoogleFonts.cairo(color: AppTheme.grey, fontSize: 12))]),
+            ]),
           ),
           Container(
-            padding:
-                const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
             decoration: BoxDecoration(
-              gradient: const LinearGradient(
-                  colors: [AppTheme.redVF, AppTheme.darkRed]),
-              borderRadius: BorderRadius.circular(14),
-            ),
+              gradient: const LinearGradient(colors: [AppTheme.redVF, AppTheme.darkRed]),
+              borderRadius: BorderRadius.circular(14)),
             child: Text('${card.netCharge}\nجنيه',
-                style: GoogleFonts.cairo(
-                    color: Colors.white,
-                    fontWeight: FontWeight.bold,
-                    fontSize: 14),
-                textAlign: TextAlign.center),
-          ),
+              style: GoogleFonts.cairo(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 14),
+              textAlign: TextAlign.center)),
         ],
       ),
     );
   }
 }
 
-class _DetailRow extends StatelessWidget {
-  final IconData icon;
-  final String label;
-  final Color color;
-  const _DetailRow(
-      {required this.icon, required this.label, required this.color});
-
-  @override
-  Widget build(BuildContext context) => Row(children: [
-        Icon(icon, color: color, size: 14),
-        const SizedBox(width: 4),
-        Text(label,
-            style: GoogleFonts.cairo(color: AppTheme.grey, fontSize: 12)),
-      ]);
-}
-
 class _SectionLabel extends StatelessWidget {
   final String label;
   const _SectionLabel({required this.label});
-
   @override
   Widget build(BuildContext context) => Align(
-        alignment: Alignment.centerRight,
-        child: Text(label,
-            style: GoogleFonts.cairo(
-                color: AppTheme.white,
-                fontSize: 14,
-                fontWeight: FontWeight.w600)),
-      );
+    alignment: Alignment.centerRight,
+    child: Text(label, style: GoogleFonts.cairo(color: AppTheme.white, fontSize: 14, fontWeight: FontWeight.w600)));
 }
 
 class _ResultCard extends StatelessWidget {
   final String message;
   final bool success;
   const _ResultCard({required this.message, required this.success});
-
   @override
   Widget build(BuildContext context) {
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: success
-            ? Colors.green.withOpacity(0.1)
-            : AppTheme.darkRed.withOpacity(0.2),
+        color: success ? Colors.green.withOpacity(0.1) : AppTheme.darkRed.withOpacity(0.2),
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(
-          color: success
-              ? Colors.green.withOpacity(0.5)
-              : AppTheme.redVF.withOpacity(0.5),
-          width: 1.5,
-        ),
-      ),
+        border: Border.all(color: success ? Colors.green.withOpacity(0.5) : AppTheme.redVF.withOpacity(0.5), width: 1.5)),
       child: Text(message,
-          style: GoogleFonts.cairo(
-              color: success ? Colors.greenAccent : Colors.redAccent,
-              fontSize: 16,
-              fontWeight: FontWeight.bold),
-          textAlign: TextAlign.center),
-    );
+        style: GoogleFonts.cairo(color: success ? Colors.greenAccent : Colors.redAccent,
+            fontSize: 16, fontWeight: FontWeight.bold),
+        textAlign: TextAlign.center));
   }
 }
