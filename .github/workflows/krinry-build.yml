@@ -9,18 +9,6 @@ on:
         default: 'release'
         type: choice
         options: [debug, profile, release]
-      output_type:
-        description: 'Output type'
-        required: true
-        default: 'apk'
-        type: choice
-        options: [apk, appbundle, apk-split]
-      target_platform:
-        description: 'Target platform'
-        required: false
-        default: 'all'
-        type: choice
-        options: [all, android-arm64, android-arm, android-x64]
 
 jobs:
   build:
@@ -28,8 +16,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Setup Java
-        uses: actions/setup-java@v4
+      - uses: actions/setup-java@v4
         with:
           distribution: 'temurin'
           java-version: '17'
@@ -44,51 +31,6 @@ jobs:
 
       - name: Create android folder
         run: flutter create --platforms android --org card.vodafone.alaa --project-name card_vfss .
-
-      - name: Inject MainActivity
-        run: |
-          MAIN=$(find android/app/src/main/kotlin -name "MainActivity.kt" | head -1)
-          cat > "$MAIN" << 'KOTLIN'
-import io.flutter.embedding.android.FlutterActivity
-import io.flutter.embedding.engine.FlutterEngine
-import io.flutter.plugin.common.MethodChannel
-import android.net.ConnectivityManager
-import android.content.Context
-import android.net.NetworkCapabilities
-import android.os.Build
-
-class MainActivity : FlutterActivity() {
-    private val CHANNEL = "com.card.vodafone.alaa/vpn"
-
-    override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
-        super.configureFlutterEngine(flutterEngine)
-        MethodChannel(flutterEngine.dartExecutor.binaryMessenger, CHANNEL).setMethodCallHandler { call, result ->
-            if (call.method == "isVpnConnected") {
-                result.success(isVpnConnected())
-            } else {
-                result.notImplemented()
-            }
-        }
-    }
-
-    private fun isVpnConnected(): Boolean {
-        val cm = getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
-        return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-            val network = cm.activeNetwork ?: return false
-            val caps = cm.getNetworkCapabilities(network) ?: return false
-            caps.hasTransport(NetworkCapabilities.TRANSPORT_VPN)
-        } else {
-            @Suppress("DEPRECATION")
-            val networks = cm.allNetworks
-            networks.any { network ->
-                @Suppress("DEPRECATION")
-                val info = cm.getNetworkInfo(network)
-                info?.typeName?.equals("VPN", ignoreCase = true) == true
-            }
-        }
-    }
-}
-KOTLIN
 
       - name: Set app label and permissions
         run: |
@@ -116,27 +58,11 @@ KOTLIN
             convert "$SRC" -resize ${size}x${size} "$OUT/ic_launcher.png"
           done
 
-      - name: Build
-        run: |
-          BUILD_TYPE="${{ github.event.inputs.build_type }}"
-          OUTPUT_TYPE="${{ github.event.inputs.output_type }}"
-          TARGET_PLATFORM="${{ github.event.inputs.target_platform }}"
-          if [ "$OUTPUT_TYPE" = "apk" ]; then
-            if [ "$TARGET_PLATFORM" != "all" ]; then
-              flutter build apk --$BUILD_TYPE --target-platform $TARGET_PLATFORM --obfuscate --split-debug-info=debug-info/
-            else
-              flutter build apk --$BUILD_TYPE --obfuscate --split-debug-info=debug-info/
-            fi
-          elif [ "$OUTPUT_TYPE" = "apk-split" ]; then
-            flutter build apk --$BUILD_TYPE --split-per-abi --obfuscate --split-debug-info=debug-info/
-          elif [ "$OUTPUT_TYPE" = "appbundle" ]; then
-            flutter build appbundle --$BUILD_TYPE --obfuscate --split-debug-info=debug-info/
-          fi
+      - name: Build APK
+        run: flutter build apk --${{ github.event.inputs.build_type }}
 
       - uses: actions/upload-artifact@v4
         with:
           name: CardVodafone-${{ github.event.inputs.build_type }}
-          path: |
-            build/app/outputs/flutter-apk/*.apk
-            build/app/outputs/bundle/*/*.aab
+          path: build/app/outputs/flutter-apk/*.apk
           retention-days: 7
