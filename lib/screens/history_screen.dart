@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:share_plus/share_plus.dart';
 import '../services/history_service.dart';
 import '../theme/app_theme.dart';
 
@@ -122,69 +124,103 @@ class _HistoryTile extends StatelessWidget {
   final ChargeHistory record;
   const _HistoryTile({required this.record});
 
+  void _copyNumber(BuildContext context) {
+    Clipboard.setData(ClipboardData(text: record.receiver));
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+      content: Text('تم نسخ الرقم: ${record.receiver}', style: GoogleFonts.cairo()),
+      backgroundColor: AppTheme.darkRed,
+      behavior: SnackBarBehavior.floating,
+      duration: const Duration(seconds: 2),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+    ));
+  }
+
+  void _share() {
+    final text = '📱 تفاصيل الشحن\n'
+        '━━━━━━━━━━━━━━━\n'
+        '🎴 الكارت: ${record.cardName}\n'
+        '💰 السعر: ${record.cardPrice} جنيه\n'
+        '📞 الرقم: ${record.receiver}\n'
+        '🕐 الوقت: ${record.date}\n'
+        '${record.success ? "✅ تم الشحن بنجاح" : "❌ فشل الشحن"}\n'
+        '━━━━━━━━━━━━━━━\n'
+        '𝐂𝐚𝐫𝐝 𝐕𝐨𝐝𝐚𝐟𝐨𝐧𝐞 | Team Mero';
+    Share.share(text);
+  }
+
   @override
   Widget build(BuildContext context) {
-    return Container(
-      margin: const EdgeInsets.only(bottom: 10),
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: AppTheme.darkCard,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(
-          color: record.success
-              ? Colors.green.withOpacity(0.2)
-              : Colors.red.withOpacity(0.2),
-          width: 1,
+    return GestureDetector(
+      onLongPress: () => _copyNumber(context),
+      child: Container(
+        margin: const EdgeInsets.only(bottom: 10),
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: AppTheme.darkCard,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(
+            color: record.success ? Colors.green.withOpacity(0.2) : Colors.red.withOpacity(0.2),
+            width: 1,
+          ),
         ),
-      ),
-      child: Row(
-        children: [
-          Container(
-            width: 44, height: 44,
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              color: record.success
-                  ? Colors.green.withOpacity(0.15)
-                  : Colors.red.withOpacity(0.15),
+        child: Row(
+          children: [
+            Container(
+              width: 44, height: 44,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: record.success ? Colors.green.withOpacity(0.15) : Colors.red.withOpacity(0.15),
+              ),
+              child: Icon(
+                record.success ? Icons.check_circle_rounded : Icons.cancel_rounded,
+                color: record.success ? Colors.greenAccent : Colors.redAccent,
+                size: 24,
+              ),
             ),
-            child: Icon(
-              record.success ? Icons.check_circle_rounded : Icons.cancel_rounded,
-              color: record.success ? Colors.greenAccent : Colors.redAccent,
-              size: 24,
+            const SizedBox(width: 14),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text(record.cardName,
+                        style: GoogleFonts.cairo(color: AppTheme.white, fontSize: 15, fontWeight: FontWeight.bold)),
+                      Text('${record.cardPrice} ج',
+                        style: GoogleFonts.cairo(color: AppTheme.gold, fontSize: 14, fontWeight: FontWeight.bold)),
+                    ],
+                  ),
+                  const SizedBox(height: 4),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Row(children: [
+                        const Icon(Icons.phone_rounded, color: AppTheme.grey, size: 13),
+                        const SizedBox(width: 4),
+                        Text(record.receiver, style: GoogleFonts.cairo(color: AppTheme.grey, fontSize: 12)),
+                      ]),
+                      Text(record.date, style: GoogleFonts.cairo(color: AppTheme.grey, fontSize: 11)),
+                    ],
+                  ),
+                  const SizedBox(height: 6),
+                  // زرار المشاركة
+                  GestureDetector(
+                    onTap: _share,
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(Icons.share_rounded, color: AppTheme.redVF.withOpacity(0.7), size: 14),
+                        const SizedBox(width: 4),
+                        Text('مشاركة', style: GoogleFonts.cairo(color: AppTheme.redVF.withOpacity(0.7), fontSize: 11)),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
             ),
-          ),
-          const SizedBox(width: 14),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Text(record.cardName,
-                      style: GoogleFonts.cairo(color: AppTheme.white, fontSize: 15, fontWeight: FontWeight.bold)),
-                    Text('${record.cardPrice} ج',
-                      style: GoogleFonts.cairo(color: AppTheme.gold, fontSize: 14, fontWeight: FontWeight.bold)),
-                  ],
-                ),
-                const SizedBox(height: 4),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Row(children: [
-                      const Icon(Icons.phone_rounded, color: AppTheme.grey, size: 13),
-                      const SizedBox(width: 4),
-                      Text(record.receiver,
-                        style: GoogleFonts.cairo(color: AppTheme.grey, fontSize: 12)),
-                    ]),
-                    Text(record.date,
-                      style: GoogleFonts.cairo(color: AppTheme.grey, fontSize: 11)),
-                  ],
-                ),
-              ],
-            ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }

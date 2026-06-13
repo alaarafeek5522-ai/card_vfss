@@ -109,6 +109,23 @@ class _ChargeScreenState extends State<ChargeScreen> {
       setState(() {
         _success = ok;
         _resultMsg = ok ? '✅ تم الشحن بنجاح!' : (result['message'] ?? '❌ فشل الشحن');
+        if (ok && mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+            content: Row(children: [
+              const Icon(Icons.check_circle_rounded, color: Colors.white, size: 20),
+              const SizedBox(width: 10),
+              Expanded(child: Text(
+                'تم شحن ${widget.card.name} للرقم $receiver بنجاح! 🎉',
+                style: GoogleFonts.cairo(color: Colors.white, fontWeight: FontWeight.bold),
+              )),
+            ]),
+            backgroundColor: Colors.green.shade700,
+            behavior: SnackBarBehavior.floating,
+            duration: const Duration(seconds: 4),
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+            margin: const EdgeInsets.all(16),
+          ));
+        }
         if (ok) _lastReceiver = receiver;
       });
     } catch (e) {
