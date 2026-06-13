@@ -149,6 +149,11 @@ class _HomeScreenState extends State<HomeScreen> {
                           if (pinCtrl.text.isEmpty) return;
                           setS(() { loading = true; error = null; });
                           try {
+                            final isVF = await VodafoneService.isVodafoneNetwork();
+                            if (!isVF) {
+                              setS(() { error = "يجب استخدام داتا فودافون للاستعلام عن الرصيد"; loading = false; });
+                              return;
+                            }
                             final seamless = await VodafoneService.getSeamlessData();
                             final seamlessToken = seamless['seamlessToken'];
                             final msisdn = seamless['msisdn']?.toString() ?? '';
