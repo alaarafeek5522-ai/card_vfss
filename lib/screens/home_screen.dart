@@ -154,18 +154,11 @@ class _HomeScreenState extends State<HomeScreen> {
                               setS(() { error = "يجب استخدام داتا فودافون للاستعلام عن الرصيد"; loading = false; });
                               return;
                             }
-                            final seamless = await VodafoneService.getSeamlessData();
-                            final seamlessToken = seamless['seamlessToken'];
-                            final msisdn = seamless['msisdn']?.toString() ?? '';
-                            final token = await VodafoneService.getAccessToken(seamlessToken);
-                            if (token == null) throw Exception('فشل الاتصال');
-                            final result = await BalanceService.getBalance(
-                              number: msisdn, pin: pinCtrl.text.trim(), token: token);
-                            if (result != null) {
-                              final match = RegExp(r'[\d.]+').firstMatch(result);
-                              setS(() { balance = match?.group(0) ?? result; loading = false; });
+                            final result = await BalanceService.getBalance(pin: pinCtrl.text.trim());
+                            if (result.success) {
+                              setS(() { balance = result.balance; loading = false; });
                             } else {
-                              setS(() { error = 'تعذر الحصول على الرصيد'; loading = false; });
+                              setS(() { error = result.message ?? "تعذر الحصول على الرصيد"; loading = false; });
                             }
                           } catch (e) {
                             setS(() { error = 'خطأ في الاتصال'; loading = false; });
