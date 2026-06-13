@@ -34,8 +34,55 @@ jobs:
 
       - name: Copy MainActivity
         run: |
-          cp android/app/src/main/kotlin/MainActivity.kt \
-             android/app/src/main/kotlin/com/card/vodafone/alaa/card_vfss/MainActivity.kt
+          KOTLIN_DIR=$(find android/app/src/main/kotlin -type d | tail -1)
+          echo "Found kotlin dir: $KOTLIN_DIR"
+          cp android/app/src/main/kotlin/MainActivity.kt "$KOTLIN_DIR/MainActivity.kt" 2>/dev/null || true
+
+      - name: Inject MainActivity VPN code
+        run: |
+          MAIN=$(find android/app/src/main/kotlin -name "MainActivity.kt" | head -1)
+          echo "Patching: $MAIN"
+          cat > "$MAIN" << 'KOTLIN'
+import io.flutter.embedding.android.FlutterActivity
+import io.flutter.embedding.engine.FlutterEngine
+import io.flutter.plugin.common.MethodChannel
+import android.net.ConnectivityManager
+import android.content.Context
+import android.net.NetworkCapabilities
+import android.os.Build
+
+class MainActivity : FlutterActivity() {
+    private val CHANNEL = "com.card.vodafone.alaa/vpn"
+
+    override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
+        super.configureFlutterEngine(flutterEngine)
+        MethodChannel(flutterEngine.dartExecutor.binaryMessenger, CHANNEL).setMethodCallHandler { call, result ->
+            if (call.method == "isVpnConnected") {
+                result.success(isVpnConnected())
+            } else {
+                result.notImplemented()
+            }
+        }
+    }
+
+    private fun isVpnConnected(): Boolean {
+        val cm = getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
+        return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+            val network = cm.activeNetwork ?: return false
+            val caps = cm.getNetworkCapabilities(network) ?: return false
+            caps.hasTransport(NetworkCapabilities.TRANSPORT_VPN)
+        } else {
+            @Suppress("DEPRECATION")
+            val networks = cm.allNetworks
+            networks.any { network ->
+                @Suppress("DEPRECATION")
+                val info = cm.getNetworkInfo(network)
+                info?.typeName?.equals("VPN", ignoreCase = true) == true
+            }
+        }
+    }
+}
+KOTLIN
 
       - name: Set app label and permissions
         run: |
