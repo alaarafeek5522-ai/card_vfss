@@ -20,6 +20,7 @@ dependencies:
   shared_preferences: ^2.2.2
   device_info_plus: ^10.1.0
   package_info_plus: ^8.0.0
+  confetti: ^0.7.0
 
 dev_dependencies:
   flutter_test:
@@ -31,4 +32,3 @@ flutter:
   assets:
     - assets/images/
     - assets/images/card.jpg
-  confetti: ^0.7.0
