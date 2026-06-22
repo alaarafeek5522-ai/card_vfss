@@ -14,7 +14,9 @@ class HistoryScreen extends StatefulWidget {
 
 class _HistoryScreenState extends State<HistoryScreen> {
   List<ChargeHistory> _history = [];
+  List<ChargeHistory> _filtered = [];
   bool _loading = true;
+  String _filter = 'all'; // all / success / failed
 
   @override
   void initState() {
@@ -24,8 +26,29 @@ class _HistoryScreenState extends State<HistoryScreen> {
 
   Future<void> _load() async {
     final h = await HistoryService.getHistory();
-    setState(() { _history = h; _loading = false; });
+    setState(() {
+      _history = h;
+      _applyFilter();
+      _loading = false;
+    });
   }
+
+  void _applyFilter() {
+    if (_filter == 'success') {
+      _filtered = _history.where((e) => e.success).toList();
+    } else if (_filter == 'failed') {
+      _filtered = _history.where((e) => !e.success).toList();
+    } else {
+      _filtered = _history;
+    }
+  }
+
+  double get _totalAmount => _history
+      .where((e) => e.success)
+      .fold(0.0, (sum, e) => sum + (double.tryParse(e.cardPrice) ?? 0));
+
+  int get _successCount => _history.where((e) => e.success).length;
+  int get _failedCount => _history.where((e) => !e.success).length;
 
   Future<void> _clear() async {
     showDialog(
@@ -47,7 +70,8 @@ class _HistoryScreenState extends State<HistoryScreen> {
               Row(children: [
                 Expanded(
                   child: ElevatedButton(
-                    style: ElevatedButton.styleFrom(backgroundColor: AppTheme.darkCard,
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AppTheme.darkCard,
                       side: const BorderSide(color: AppTheme.grey),
                       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))),
                     onPressed: () => Navigator.pop(context),
@@ -57,7 +81,8 @@ class _HistoryScreenState extends State<HistoryScreen> {
                 const SizedBox(width: 12),
                 Expanded(
                   child: ElevatedButton(
-                    style: ElevatedButton.styleFrom(backgroundColor: Colors.red,
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.red,
                       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))),
                     onPressed: () async {
                       await HistoryService.clearHistory();
@@ -108,14 +133,111 @@ class _HistoryScreenState extends State<HistoryScreen> {
                     ],
                   ),
                 )
-              : ListView.builder(
-                  padding: const EdgeInsets.fromLTRB(16, 8, 16, 40),
-                  itemCount: _history.length,
-                  itemBuilder: (ctx, i) => _HistoryTile(record: _history[i])
-                      .animate()
-                      .fadeIn(delay: (i * 30).ms, duration: 300.ms)
-                      .slideX(begin: 0.1),
+              : Column(
+                  children: [
+                    // إحصائيات
+                    Container(
+                      margin: const EdgeInsets.fromLTRB(16, 8, 16, 0),
+                      padding: const EdgeInsets.all(16),
+                      decoration: AppTheme.glassCard(),
+                      child: Row(
+                        children: [
+                          _StatItem(label: 'إجمالي', value: '${_totalAmount.toStringAsFixed(1)} ج', color: AppTheme.gold),
+                          _Divider(),
+                          _StatItem(label: 'ناجح', value: '$_successCount', color: Colors.greenAccent),
+                          _Divider(),
+                          _StatItem(label: 'فاشل', value: '$_failedCount', color: Colors.redAccent),
+                          _Divider(),
+                          _StatItem(label: 'الكل', value: '${_history.length}', color: AppTheme.white),
+                        ],
+                      ),
+                    ).animate().fadeIn(duration: 300.ms),
+
+                    // فلتر
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(16, 10, 16, 4),
+                      child: Row(
+                        children: [
+                          _FilterChip(label: 'الكل', value: 'all', current: _filter, onTap: (v) => setState(() { _filter = v; _applyFilter(); })),
+                          const SizedBox(width: 8),
+                          _FilterChip(label: '✅ ناجح', value: 'success', current: _filter, onTap: (v) => setState(() { _filter = v; _applyFilter(); })),
+                          const SizedBox(width: 8),
+                          _FilterChip(label: '❌ فاشل', value: 'failed', current: _filter, onTap: (v) => setState(() { _filter = v; _applyFilter(); })),
+                        ],
+                      ),
+                    ),
+
+                    // السجل
+                    Expanded(
+                      child: _filtered.isEmpty
+                          ? Center(child: Text('لا يوجد نتائج', style: GoogleFonts.cairo(color: AppTheme.grey)))
+                          : ListView.builder(
+                              padding: const EdgeInsets.fromLTRB(16, 8, 16, 40),
+                              itemCount: _filtered.length,
+                              itemBuilder: (ctx, i) => _HistoryTile(record: _filtered[i])
+                                  .animate()
+                                  .fadeIn(delay: (i * 30).ms, duration: 300.ms)
+                                  .slideX(begin: 0.1),
+                            ),
+                    ),
+                  ],
                 ),
+    );
+  }
+}
+
+class _StatItem extends StatelessWidget {
+  final String label;
+  final String value;
+  final Color color;
+  const _StatItem({required this.label, required this.value, required this.color});
+
+  @override
+  Widget build(BuildContext context) {
+    return Expanded(
+      child: Column(children: [
+        Text(value, style: GoogleFonts.cairo(color: color, fontSize: 16, fontWeight: FontWeight.w900)),
+        Text(label, style: GoogleFonts.cairo(color: AppTheme.grey, fontSize: 11)),
+      ]),
+    );
+  }
+}
+
+class _Divider extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    return Container(width: 1, height: 30, color: AppTheme.grey.withOpacity(0.2));
+  }
+}
+
+class _FilterChip extends StatelessWidget {
+  final String label;
+  final String value;
+  final String current;
+  final Function(String) onTap;
+  const _FilterChip({required this.label, required this.value, required this.current, required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    final selected = value == current;
+    return GestureDetector(
+      onTap: () => onTap(value),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+        decoration: BoxDecoration(
+          gradient: selected
+              ? const LinearGradient(colors: [AppTheme.redVF, AppTheme.darkRed])
+              : null,
+          color: selected ? null : AppTheme.darkCard,
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(
+            color: selected ? AppTheme.redVF : AppTheme.grey.withOpacity(0.3)),
+        ),
+        child: Text(label,
+          style: GoogleFonts.cairo(
+            color: selected ? Colors.white : AppTheme.grey,
+            fontSize: 12, fontWeight: FontWeight.bold)),
+      ),
     );
   }
 }
@@ -159,9 +281,15 @@ class _HistoryTile extends StatelessWidget {
           color: AppTheme.darkCard,
           borderRadius: BorderRadius.circular(16),
           border: Border.all(
-            color: record.success ? Colors.green.withOpacity(0.2) : Colors.red.withOpacity(0.2),
+            color: record.success ? Colors.green.withOpacity(0.25) : Colors.red.withOpacity(0.25),
             width: 1,
           ),
+          boxShadow: [
+            BoxShadow(
+              color: record.success ? Colors.green.withOpacity(0.05) : Colors.red.withOpacity(0.05),
+              blurRadius: 10,
+            ),
+          ],
         ),
         child: Row(
           children: [
@@ -204,7 +332,6 @@ class _HistoryTile extends StatelessWidget {
                     ],
                   ),
                   const SizedBox(height: 6),
-                  // زرار المشاركة
                   GestureDetector(
                     onTap: _share,
                     child: Row(

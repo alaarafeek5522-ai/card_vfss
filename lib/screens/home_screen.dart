@@ -194,7 +194,7 @@ class _HomeScreenState extends State<HomeScreen> {
             backgroundColor: AppTheme.black,
             flexibleSpace: FlexibleSpaceBar(
               background: _AppBarBg(),
-              title: Text('Card Vodafone',
+              title: _ShimmerTitle(),
                 style: GoogleFonts.cairo(fontSize: 20, fontWeight: FontWeight.w900,
                   foreground: Paint()..shader = const LinearGradient(
                     colors: [AppTheme.redVF, AppTheme.gold],
@@ -457,4 +457,46 @@ class _SlideRoute extends PageRouteBuilder {
     },
     transitionDuration: const Duration(milliseconds: 350),
   );
+}
+
+class _ShimmerTitle extends StatefulWidget {
+  @override
+  State<_ShimmerTitle> createState() => _ShimmerTitleState();
+}
+
+class _ShimmerTitleState extends State<_ShimmerTitle>
+    with SingleTickerProviderStateMixin {
+  late AnimationController _ctrl;
+
+  @override
+  void initState() {
+    super.initState();
+    _ctrl = AnimationController(vsync: this, duration: const Duration(milliseconds: 1500))..repeat();
+  }
+
+  @override
+  void dispose() { _ctrl.dispose(); super.dispose(); }
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedBuilder(
+      animation: _ctrl,
+      builder: (_, __) => ShaderMask(
+        shaderCallback: (bounds) => LinearGradient(
+          colors: const [AppTheme.redVF, AppTheme.gold, Colors.white, AppTheme.gold, AppTheme.redVF],
+          stops: [
+            0.0,
+            (_ctrl.value - 0.1).clamp(0.0, 1.0),
+            _ctrl.value.clamp(0.0, 1.0),
+            (_ctrl.value + 0.1).clamp(0.0, 1.0),
+            1.0,
+          ],
+          begin: Alignment.centerLeft,
+          end: Alignment.centerRight,
+        ).createShader(bounds),
+        child: Text('Card Vodafone',
+          style: GoogleFonts.cairo(fontSize: 20, fontWeight: FontWeight.w900, color: Colors.white)),
+      ),
+    );
+  }
 }
