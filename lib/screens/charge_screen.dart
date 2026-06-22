@@ -16,7 +16,8 @@ class ChargeScreen extends StatefulWidget {
   State<ChargeScreen> createState() => _ChargeScreenState();
 }
 
-class _ChargeScreenState extends State<ChargeScreen> {
+class _ChargeScreenState extends State<ChargeScreen>
+    with SingleTickerProviderStateMixin {
   final _receiverCtrl = TextEditingController();
   final _pinCtrl = TextEditingController();
   bool _loading = false;
@@ -24,11 +25,25 @@ class _ChargeScreenState extends State<ChargeScreen> {
   String? _resultMsg;
   bool? _success;
   String? _lastReceiver;
+  late AnimationController _pulseCtrl;
+  late Animation<double> _pulseAnim;
 
   @override
   void initState() {
     super.initState();
     _loadLastReceiver();
+    _pulseCtrl = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 900),
+    )..repeat(reverse: true);
+    _pulseAnim = Tween(begin: 1.0, end: 1.04).animate(
+      CurvedAnimation(parent: _pulseCtrl, curve: Curves.easeInOut));
+  }
+
+  @override
+  void dispose() {
+    _pulseCtrl.dispose();
+    super.dispose();
   }
 
   Future<void> _loadLastReceiver() async {
@@ -53,7 +68,7 @@ class _ChargeScreenState extends State<ChargeScreen> {
     } catch (_) {}
   }
 
-  Future<void> _charge() async {
+  Future<void> _confirmAndCharge() async {
     final receiver = _receiverCtrl.text.trim();
     final pin = _pinCtrl.text.trim();
 
@@ -65,6 +80,95 @@ class _ChargeScreenState extends State<ChargeScreen> {
       _showSnack('ادخل الرقم السري');
       return;
     }
+
+    // Confirmation Dialog
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (_) => Dialog(
+        backgroundColor: Colors.transparent,
+        child: Container(
+          decoration: AppTheme.glassCard(borderColor: AppTheme.gold),
+          child: Padding(
+            padding: const EdgeInsets.all(24),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: AppTheme.gold.withOpacity(0.15),
+                    border: Border.all(color: AppTheme.gold.withOpacity(0.4)),
+                  ),
+                  child: const Icon(Icons.send_rounded, color: AppTheme.gold, size: 36),
+                ),
+                const SizedBox(height: 16),
+                Text('تأكيد الشحن',
+                  style: GoogleFonts.cairo(color: AppTheme.white, fontSize: 18, fontWeight: FontWeight.w900)),
+                const SizedBox(height: 12),
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(14),
+                  decoration: BoxDecoration(
+                    color: AppTheme.darkCard,
+                    borderRadius: BorderRadius.circular(14),
+                    border: Border.all(color: AppTheme.redVF.withOpacity(0.3)),
+                  ),
+                  child: Column(children: [
+                    _ConfirmRow(icon: Icons.credit_card, label: 'الكارت', value: widget.card.name),
+                    const SizedBox(height: 8),
+                    _ConfirmRow(icon: Icons.attach_money, label: 'السعر', value: '${widget.card.netCharge} جنيه'),
+                    const SizedBox(height: 8),
+                    _ConfirmRow(icon: Icons.phone, label: 'المستلم', value: receiver),
+                  ]),
+                ),
+                const SizedBox(height: 20),
+                Row(children: [
+                  Expanded(
+                    child: ElevatedButton(
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: AppTheme.darkCard,
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                        padding: const EdgeInsets.symmetric(vertical: 14)),
+                      onPressed: () => Navigator.pop(context, false),
+                      child: Text('إلغاء', style: GoogleFonts.cairo(color: AppTheme.grey, fontWeight: FontWeight.bold)),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: ElevatedButton(
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.transparent,
+                        shadowColor: Colors.transparent,
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                        padding: EdgeInsets.zero),
+                      onPressed: () => Navigator.pop(context, true),
+                      child: Ink(
+                        decoration: BoxDecoration(
+                          gradient: const LinearGradient(colors: [AppTheme.redVF, AppTheme.darkRed]),
+                          borderRadius: BorderRadius.circular(12)),
+                        child: Container(
+                          alignment: Alignment.center,
+                          padding: const EdgeInsets.symmetric(vertical: 14),
+                          child: Text('تأكيد', style: GoogleFonts.cairo(color: Colors.white, fontWeight: FontWeight.bold))),
+                      ),
+                    ),
+                  ),
+                ]),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+
+    if (confirmed != true) return;
+    await _charge();
+  }
+
+  Future<void> _charge() async {
+    final receiver = _receiverCtrl.text.trim();
+    final pin = _pinCtrl.text.trim();
 
     setState(() { _loading = true; _resultMsg = null; _success = null; });
 
@@ -95,7 +199,6 @@ class _ChargeScreenState extends State<ChargeScreen> {
 
       final ok = result['state'] == 'Completed' || result['complete'] == true;
 
-      // حفظ في السجل
       final now = DateTime.now();
       final dateStr = '${now.year}-${now.month.toString().padLeft(2,'0')}-${now.day.toString().padLeft(2,'0')} ${now.hour.toString().padLeft(2,'0')}:${now.minute.toString().padLeft(2,'0')}';
       await HistoryService.addRecord(ChargeHistory(
@@ -106,29 +209,16 @@ class _ChargeScreenState extends State<ChargeScreen> {
         success: ok,
       ));
 
+      if (ok) HapticFeedback.heavyImpact();
+      else HapticFeedback.vibrate();
+
       setState(() {
         _success = ok;
         _resultMsg = ok ? '✅ تم الشحن بنجاح!' : (result['message'] ?? '❌ فشل الشحن');
-        if (ok && mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-            content: Row(children: [
-              const Icon(Icons.check_circle_rounded, color: Colors.white, size: 20),
-              const SizedBox(width: 10),
-              Expanded(child: Text(
-                'تم شحن ${widget.card.name} للرقم $receiver بنجاح! 🎉',
-                style: GoogleFonts.cairo(color: Colors.white, fontWeight: FontWeight.bold),
-              )),
-            ]),
-            backgroundColor: Colors.green.shade700,
-            behavior: SnackBarBehavior.floating,
-            duration: const Duration(seconds: 4),
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-            margin: const EdgeInsets.all(16),
-          ));
-        }
         if (ok) _lastReceiver = receiver;
       });
     } catch (e) {
+      HapticFeedback.vibrate();
       await HistoryService.addRecord(ChargeHistory(
         cardName: widget.card.name,
         cardPrice: widget.card.netCharge,
@@ -159,7 +249,7 @@ class _ChargeScreenState extends State<ChargeScreen> {
               const SizedBox(height: 16),
               Text('شبكة غير مدعومة', style: GoogleFonts.cairo(color: AppTheme.white, fontSize: 18, fontWeight: FontWeight.bold)),
               const SizedBox(height: 10),
-              Text('التطبيق يعمل فقط على داتا فودافون\nتأكد أنك متصل بداتا فودافون وليس واي فاي',
+              Text('التطبيق يعمل فقط على داتا فودافون',
                 style: GoogleFonts.cairo(color: AppTheme.grey, fontSize: 14), textAlign: TextAlign.center),
               const SizedBox(height: 20),
               SizedBox(width: double.infinity,
@@ -226,7 +316,6 @@ class _ChargeScreenState extends State<ChargeScreen> {
               ),
             ),
 
-            // آخر رقم شحنت له
             if (_lastReceiver != null) ...[
               const SizedBox(height: 4),
               GestureDetector(
@@ -273,34 +362,41 @@ class _ChargeScreenState extends State<ChargeScreen> {
 
             const SizedBox(height: 32),
 
-            SizedBox(
-              width: double.infinity, height: 56,
-              child: ElevatedButton(
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.transparent, shadowColor: Colors.transparent,
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-                  padding: EdgeInsets.zero,
-                ),
-                onPressed: _loading ? null : _charge,
-                child: Ink(
-                  decoration: BoxDecoration(
-                    gradient: _loading
-                        ? const LinearGradient(colors: [Colors.grey, Colors.grey])
-                        : const LinearGradient(colors: [AppTheme.redVF, AppTheme.darkRed],
-                            begin: Alignment.topLeft, end: Alignment.bottomRight),
-                    borderRadius: BorderRadius.circular(16),
-                    boxShadow: [BoxShadow(color: AppTheme.redVF.withOpacity(0.4), blurRadius: 15, offset: const Offset(0, 6))],
+            AnimatedBuilder(
+              animation: _pulseAnim,
+              builder: (_, child) => Transform.scale(
+                scale: _loading ? 1.0 : _pulseAnim.value,
+                child: child,
+              ),
+              child: SizedBox(
+                width: double.infinity, height: 56,
+                child: ElevatedButton(
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.transparent, shadowColor: Colors.transparent,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                    padding: EdgeInsets.zero,
                   ),
-                  child: Center(
-                    child: _loading
-                        ? const SizedBox(width: 26, height: 26,
-                            child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2.5))
-                        : Row(mainAxisAlignment: MainAxisAlignment.center, children: [
-                            const Icon(Icons.send_rounded, color: Colors.white, size: 20),
-                            const SizedBox(width: 10),
-                            Text('إرسال الكارت',
-                              style: GoogleFonts.cairo(color: Colors.white, fontSize: 17, fontWeight: FontWeight.bold)),
-                          ]),
+                  onPressed: _loading ? null : _confirmAndCharge,
+                  child: Ink(
+                    decoration: BoxDecoration(
+                      gradient: _loading
+                          ? const LinearGradient(colors: [Colors.grey, Colors.grey])
+                          : const LinearGradient(colors: [AppTheme.redVF, AppTheme.darkRed],
+                              begin: Alignment.topLeft, end: Alignment.bottomRight),
+                      borderRadius: BorderRadius.circular(16),
+                      boxShadow: [BoxShadow(color: AppTheme.redVF.withOpacity(0.4), blurRadius: 15, offset: const Offset(0, 6))],
+                    ),
+                    child: Center(
+                      child: _loading
+                          ? const SizedBox(width: 26, height: 26,
+                              child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2.5))
+                          : Row(mainAxisAlignment: MainAxisAlignment.center, children: [
+                              const Icon(Icons.send_rounded, color: Colors.white, size: 20),
+                              const SizedBox(width: 10),
+                              Text('إرسال الكارت',
+                                style: GoogleFonts.cairo(color: Colors.white, fontSize: 17, fontWeight: FontWeight.bold)),
+                            ]),
+                    ),
                   ),
                 ),
               ),
@@ -335,6 +431,25 @@ class _ChargeScreenState extends State<ChargeScreen> {
   }
 }
 
+class _ConfirmRow extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final String value;
+  const _ConfirmRow({required this.icon, required this.label, required this.value});
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(children: [
+      Icon(icon, color: AppTheme.gold, size: 16),
+      const SizedBox(width: 8),
+      Text('$label: ', style: GoogleFonts.cairo(color: AppTheme.grey, fontSize: 13)),
+      Expanded(child: Text(value,
+        style: GoogleFonts.cairo(color: AppTheme.white, fontSize: 13, fontWeight: FontWeight.bold),
+        overflow: TextOverflow.ellipsis)),
+    ]);
+  }
+}
+
 class _CardDetails extends StatelessWidget {
   final CardModel card;
   const _CardDetails({required this.card});
@@ -343,13 +458,7 @@ class _CardDetails extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        gradient: const LinearGradient(colors: [Color(0xFF1A0000), Color(0xFF0D0D0D)],
-            begin: Alignment.topLeft, end: Alignment.bottomRight),
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: AppTheme.redVF.withOpacity(0.3), width: 1.5),
-        boxShadow: [BoxShadow(color: AppTheme.redVF.withOpacity(0.1), blurRadius: 20, spreadRadius: 2)],
-      ),
+      decoration: AppTheme.glassCard(),
       child: Row(
         children: [
           Container(width: 60, height: 60,
