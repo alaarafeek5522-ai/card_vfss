@@ -4,6 +4,7 @@ import 'package:flutter_animate/flutter_animate.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:flutter_contacts/flutter_contacts.dart';
 import 'package:permission_handler/permission_handler.dart';
+import 'package:confetti/confetti.dart';
 import '../models/card_model.dart';
 import '../services/vodafone_service.dart';
 import '../services/history_service.dart';
@@ -20,6 +21,7 @@ class _ChargeScreenState extends State<ChargeScreen>
     with SingleTickerProviderStateMixin {
   final _receiverCtrl = TextEditingController();
   final _pinCtrl = TextEditingController();
+  late ConfettiController _confettiCtrl;
   bool _loading = false;
   bool _pinVisible = false;
   String? _resultMsg;
@@ -32,6 +34,7 @@ class _ChargeScreenState extends State<ChargeScreen>
   void initState() {
     super.initState();
     _loadLastReceiver();
+    _confettiCtrl = ConfettiController(duration: const Duration(seconds: 3));
     _pulseCtrl = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 900),
@@ -42,6 +45,7 @@ class _ChargeScreenState extends State<ChargeScreen>
 
   @override
   void dispose() {
+    _confettiCtrl.dispose();
     _pulseCtrl.dispose();
     super.dispose();
   }
@@ -81,7 +85,6 @@ class _ChargeScreenState extends State<ChargeScreen>
       return;
     }
 
-    // Confirmation Dialog
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (_) => Dialog(
@@ -209,8 +212,12 @@ class _ChargeScreenState extends State<ChargeScreen>
         success: ok,
       ));
 
-      if (ok) HapticFeedback.heavyImpact();
-      else HapticFeedback.vibrate();
+      if (ok) {
+        HapticFeedback.heavyImpact();
+        _confettiCtrl.play();
+      } else {
+        HapticFeedback.vibrate();
+      }
 
       setState(() {
         _success = ok;
@@ -290,127 +297,150 @@ class _ChargeScreenState extends State<ChargeScreen>
         title: Text(card.name, style: GoogleFonts.cairo(color: AppTheme.white, fontWeight: FontWeight.bold)),
         centerTitle: true,
       ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(20),
-        child: Column(
-          children: [
-            _CardDetails(card: card)
-                .animate().fadeIn(duration: 400.ms).slideY(begin: -0.1),
-
-            const SizedBox(height: 28),
-
-            _SectionLabel(label: 'رقم المستلم'),
-            const SizedBox(height: 8),
-            TextField(
-              controller: _receiverCtrl,
-              keyboardType: TextInputType.phone,
-              inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-              maxLength: 11,
-              style: GoogleFonts.cairo(color: AppTheme.white, fontSize: 18, letterSpacing: 2),
-              decoration: _inputDec(
-                hint: '01XXXXXXXXX',
-                suffix: IconButton(
-                  icon: const Icon(Icons.contacts_rounded, color: AppTheme.gold),
-                  onPressed: _pickContact,
-                ),
-              ),
+      body: Stack(
+        children: [
+          // Confetti من فوق في المنتصف
+          Align(
+            alignment: Alignment.topCenter,
+            child: ConfettiWidget(
+              confettiController: _confettiCtrl,
+              blastDirectionality: BlastDirectionality.explosive,
+              shouldLoop: false,
+              numberOfParticles: 30,
+              gravity: 0.3,
+              colors: const [
+                AppTheme.redVF,
+                AppTheme.gold,
+                Colors.white,
+                Color(0xFFFF6B6B),
+                Color(0xFF4A90D9),
+              ],
             ),
+          ),
 
-            if (_lastReceiver != null) ...[
-              const SizedBox(height: 4),
-              GestureDetector(
-                onTap: () => setState(() => _receiverCtrl.text = _lastReceiver!),
-                child: Container(
-                  width: double.infinity,
-                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-                  decoration: BoxDecoration(
-                    color: AppTheme.darkCard,
-                    borderRadius: BorderRadius.circular(12),
-                    border: Border.all(color: AppTheme.redVF.withOpacity(0.3)),
-                  ),
-                  child: Row(children: [
-                    const Icon(Icons.history_rounded, color: AppTheme.redVF, size: 16),
-                    const SizedBox(width: 8),
-                    Text('آخر رقم: $_lastReceiver',
-                      style: GoogleFonts.cairo(color: AppTheme.grey, fontSize: 13)),
-                    const Spacer(),
-                    Text('اضغط للاستخدام',
-                      style: GoogleFonts.cairo(color: AppTheme.redVF, fontSize: 11)),
-                  ]),
-                ),
-              ),
-            ],
+          SingleChildScrollView(
+            padding: const EdgeInsets.all(20),
+            child: Column(
+              children: [
+                _CardDetails(card: card)
+                    .animate().fadeIn(duration: 400.ms).slideY(begin: -0.1),
 
-            const SizedBox(height: 16),
+                const SizedBox(height: 28),
 
-            _SectionLabel(label: 'الرقم السري للمحفظة'),
-            const SizedBox(height: 8),
-            TextField(
-              controller: _pinCtrl,
-              keyboardType: TextInputType.number,
-              obscureText: !_pinVisible,
-              inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-              style: GoogleFonts.cairo(color: AppTheme.white, fontSize: 18, letterSpacing: 4),
-              decoration: _inputDec(
-                hint: '••••••',
-                suffix: IconButton(
-                  icon: Icon(_pinVisible ? Icons.visibility_off : Icons.visibility, color: AppTheme.grey),
-                  onPressed: () => setState(() => _pinVisible = !_pinVisible),
-                ),
-              ),
-            ),
-
-            const SizedBox(height: 32),
-
-            AnimatedBuilder(
-              animation: _pulseAnim,
-              builder: (_, child) => Transform.scale(
-                scale: _loading ? 1.0 : _pulseAnim.value,
-                child: child,
-              ),
-              child: SizedBox(
-                width: double.infinity, height: 56,
-                child: ElevatedButton(
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.transparent, shadowColor: Colors.transparent,
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-                    padding: EdgeInsets.zero,
-                  ),
-                  onPressed: _loading ? null : _confirmAndCharge,
-                  child: Ink(
-                    decoration: BoxDecoration(
-                      gradient: _loading
-                          ? const LinearGradient(colors: [Colors.grey, Colors.grey])
-                          : const LinearGradient(colors: [AppTheme.redVF, AppTheme.darkRed],
-                              begin: Alignment.topLeft, end: Alignment.bottomRight),
-                      borderRadius: BorderRadius.circular(16),
-                      boxShadow: [BoxShadow(color: AppTheme.redVF.withOpacity(0.4), blurRadius: 15, offset: const Offset(0, 6))],
-                    ),
-                    child: Center(
-                      child: _loading
-                          ? const SizedBox(width: 26, height: 26,
-                              child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2.5))
-                          : Row(mainAxisAlignment: MainAxisAlignment.center, children: [
-                              const Icon(Icons.send_rounded, color: Colors.white, size: 20),
-                              const SizedBox(width: 10),
-                              Text('إرسال الكارت',
-                                style: GoogleFonts.cairo(color: Colors.white, fontSize: 17, fontWeight: FontWeight.bold)),
-                            ]),
+                _SectionLabel(label: 'رقم المستلم'),
+                const SizedBox(height: 8),
+                TextField(
+                  controller: _receiverCtrl,
+                  keyboardType: TextInputType.phone,
+                  inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                  maxLength: 11,
+                  style: GoogleFonts.cairo(color: AppTheme.white, fontSize: 18, letterSpacing: 2),
+                  decoration: _inputDec(
+                    hint: '01XXXXXXXXX',
+                    suffix: IconButton(
+                      icon: const Icon(Icons.contacts_rounded, color: AppTheme.gold),
+                      onPressed: _pickContact,
                     ),
                   ),
                 ),
-              ),
+
+                if (_lastReceiver != null) ...[
+                  const SizedBox(height: 4),
+                  GestureDetector(
+                    onTap: () => setState(() => _receiverCtrl.text = _lastReceiver!),
+                    child: Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                      decoration: BoxDecoration(
+                        color: AppTheme.darkCard,
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(color: AppTheme.redVF.withOpacity(0.3)),
+                      ),
+                      child: Row(children: [
+                        const Icon(Icons.history_rounded, color: AppTheme.redVF, size: 16),
+                        const SizedBox(width: 8),
+                        Text('آخر رقم: $_lastReceiver',
+                          style: GoogleFonts.cairo(color: AppTheme.grey, fontSize: 13)),
+                        const Spacer(),
+                        Text('اضغط للاستخدام',
+                          style: GoogleFonts.cairo(color: AppTheme.redVF, fontSize: 11)),
+                      ]),
+                    ),
+                  ),
+                ],
+
+                const SizedBox(height: 16),
+
+                _SectionLabel(label: 'الرقم السري للمحفظة'),
+                const SizedBox(height: 8),
+                TextField(
+                  controller: _pinCtrl,
+                  keyboardType: TextInputType.number,
+                  obscureText: !_pinVisible,
+                  inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                  style: GoogleFonts.cairo(color: AppTheme.white, fontSize: 18, letterSpacing: 4),
+                  decoration: _inputDec(
+                    hint: '••••••',
+                    suffix: IconButton(
+                      icon: Icon(_pinVisible ? Icons.visibility_off : Icons.visibility, color: AppTheme.grey),
+                      onPressed: () => setState(() => _pinVisible = !_pinVisible),
+                    ),
+                  ),
+                ),
+
+                const SizedBox(height: 32),
+
+                AnimatedBuilder(
+                  animation: _pulseAnim,
+                  builder: (_, child) => Transform.scale(
+                    scale: _loading ? 1.0 : _pulseAnim.value,
+                    child: child,
+                  ),
+                  child: SizedBox(
+                    width: double.infinity, height: 56,
+                    child: ElevatedButton(
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.transparent, shadowColor: Colors.transparent,
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                        padding: EdgeInsets.zero,
+                      ),
+                      onPressed: _loading ? null : _confirmAndCharge,
+                      child: Ink(
+                        decoration: BoxDecoration(
+                          gradient: _loading
+                              ? const LinearGradient(colors: [Colors.grey, Colors.grey])
+                              : const LinearGradient(colors: [AppTheme.redVF, AppTheme.darkRed],
+                                  begin: Alignment.topLeft, end: Alignment.bottomRight),
+                          borderRadius: BorderRadius.circular(16),
+                          boxShadow: [BoxShadow(color: AppTheme.redVF.withOpacity(0.4), blurRadius: 15, offset: const Offset(0, 6))],
+                        ),
+                        child: Center(
+                          child: _loading
+                              ? const SizedBox(width: 26, height: 26,
+                                  child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2.5))
+                              : Row(mainAxisAlignment: MainAxisAlignment.center, children: [
+                                  const Icon(Icons.send_rounded, color: Colors.white, size: 20),
+                                  const SizedBox(width: 10),
+                                  Text('إرسال الكارت',
+                                    style: GoogleFonts.cairo(color: Colors.white, fontSize: 17, fontWeight: FontWeight.bold)),
+                                ]),
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+
+                if (_resultMsg != null) ...[
+                  const SizedBox(height: 24),
+                  _ResultCard(message: _resultMsg!, success: _success ?? false)
+                      .animate().fadeIn(duration: 400.ms).scale(begin: const Offset(0.9, 0.9)),
+                ],
+
+                const SizedBox(height: 40),
+              ],
             ),
-
-            if (_resultMsg != null) ...[
-              const SizedBox(height: 24),
-              _ResultCard(message: _resultMsg!, success: _success ?? false)
-                  .animate().fadeIn(duration: 400.ms).scale(begin: const Offset(0.9, 0.9)),
-            ],
-
-            const SizedBox(height: 40),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }
