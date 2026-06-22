@@ -89,8 +89,13 @@ class _ChargeScreenState extends State<ChargeScreen>
       context: context,
       builder: (_) => Dialog(
         backgroundColor: Colors.transparent,
+        insetPadding: const EdgeInsets.fromLTRB(20, 60, 20, 0),
         child: Container(
-          decoration: AppTheme.glassCard(borderColor: AppTheme.gold),
+          decoration: BoxDecoration(
+            color: const Color(0xEE111111),
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(color: AppTheme.gold.withOpacity(0.4), width: 1.5),
+          ),
           child: Padding(
             padding: const EdgeInsets.all(24),
             child: Column(
@@ -142,6 +147,7 @@ class _ChargeScreenState extends State<ChargeScreen>
                     child: ElevatedButton(
                       style: ElevatedButton.styleFrom(
                         backgroundColor: Colors.transparent,
+        insetPadding: const EdgeInsets.fromLTRB(20, 60, 20, 0),
                         shadowColor: Colors.transparent,
                         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                         padding: EdgeInsets.zero),
@@ -290,6 +296,7 @@ class _ChargeScreenState extends State<ChargeScreen>
       backgroundColor: AppTheme.black,
       appBar: AppBar(
         backgroundColor: Colors.transparent,
+        insetPadding: const EdgeInsets.fromLTRB(20, 60, 20, 0),
         leading: IconButton(
           icon: const Icon(Icons.arrow_back_ios_rounded, color: AppTheme.white),
           onPressed: () => Navigator.pop(context),
@@ -400,7 +407,8 @@ class _ChargeScreenState extends State<ChargeScreen>
                     width: double.infinity, height: 56,
                     child: ElevatedButton(
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.transparent, shadowColor: Colors.transparent,
+                        backgroundColor: Colors.transparent,
+        insetPadding: const EdgeInsets.fromLTRB(20, 60, 20, 0), shadowColor: Colors.transparent,
                         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
                         padding: EdgeInsets.zero,
                       ),
