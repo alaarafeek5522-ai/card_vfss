@@ -84,7 +84,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     ),
                     padding: const EdgeInsets.all(4),
                     child: ClipOval(
-                      child: Image.asset('assets/images/card.jpg',
+                      child: Image.asset('assets/images/card.png',
                         fit: BoxFit.cover,
                         errorBuilder: (_, __, ___) => const Icon(Icons.account_balance_wallet_rounded, color: AppTheme.gold, size: 36)),
                     ),
@@ -477,7 +477,7 @@ class _CardTile extends StatelessWidget {
                   color: AppTheme.redVF.withOpacity(0.12),
                   border: Border.all(color: AppTheme.redVF.withOpacity(0.3), width: 1.5)),
                 clipBehavior: Clip.antiAlias,
-                child: Image.asset('assets/images/card.jpg',
+                child: Image.asset('assets/images/card.png',
                   fit: BoxFit.cover,
                   errorBuilder: (_, __, ___) => Image.asset('assets/images/Vodafone.png',
                     errorBuilder: (_, __, ___) => const Icon(Icons.credit_card, color: AppTheme.redVF, size: 22))),
