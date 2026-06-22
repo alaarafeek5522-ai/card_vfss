@@ -87,14 +87,16 @@ class _ChargeScreenState extends State<ChargeScreen>
 
     final confirmed = await showDialog<bool>(
       context: context,
+      barrierColor: Colors.black.withOpacity(0.7),
       builder: (_) => Dialog(
         backgroundColor: Colors.transparent,
-        insetPadding: const EdgeInsets.fromLTRB(20, 60, 20, 0),
+        insetPadding: const EdgeInsets.fromLTRB(20, 80, 20, 0),
         child: Container(
           decoration: BoxDecoration(
             color: const Color(0xEE111111),
             borderRadius: BorderRadius.circular(20),
             border: Border.all(color: AppTheme.gold.withOpacity(0.4), width: 1.5),
+            boxShadow: [BoxShadow(color: AppTheme.gold.withOpacity(0.1), blurRadius: 20)],
           ),
           child: Padding(
             padding: const EdgeInsets.all(24),
@@ -118,7 +120,7 @@ class _ChargeScreenState extends State<ChargeScreen>
                   width: double.infinity,
                   padding: const EdgeInsets.all(14),
                   decoration: BoxDecoration(
-                    color: AppTheme.darkCard,
+                    color: AppTheme.black,
                     borderRadius: BorderRadius.circular(14),
                     border: Border.all(color: AppTheme.redVF.withOpacity(0.3)),
                   ),
@@ -147,7 +149,6 @@ class _ChargeScreenState extends State<ChargeScreen>
                     child: ElevatedButton(
                       style: ElevatedButton.styleFrom(
                         backgroundColor: Colors.transparent,
-        insetPadding: const EdgeInsets.fromLTRB(20, 60, 20, 0),
                         shadowColor: Colors.transparent,
                         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                         padding: EdgeInsets.zero),
@@ -296,7 +297,6 @@ class _ChargeScreenState extends State<ChargeScreen>
       backgroundColor: AppTheme.black,
       appBar: AppBar(
         backgroundColor: Colors.transparent,
-        insetPadding: const EdgeInsets.fromLTRB(20, 60, 20, 0),
         leading: IconButton(
           icon: const Icon(Icons.arrow_back_ios_rounded, color: AppTheme.white),
           onPressed: () => Navigator.pop(context),
@@ -306,7 +306,6 @@ class _ChargeScreenState extends State<ChargeScreen>
       ),
       body: Stack(
         children: [
-          // Confetti من فوق في المنتصف
           Align(
             alignment: Alignment.topCenter,
             child: ConfettiWidget(
@@ -316,15 +315,11 @@ class _ChargeScreenState extends State<ChargeScreen>
               numberOfParticles: 30,
               gravity: 0.3,
               colors: const [
-                AppTheme.redVF,
-                AppTheme.gold,
-                Colors.white,
-                Color(0xFFFF6B6B),
-                Color(0xFF4A90D9),
+                AppTheme.redVF, AppTheme.gold, Colors.white,
+                Color(0xFFFF6B6B), Color(0xFF4A90D9),
               ],
             ),
           ),
-
           SingleChildScrollView(
             padding: const EdgeInsets.all(20),
             child: Column(
@@ -408,7 +403,7 @@ class _ChargeScreenState extends State<ChargeScreen>
                     child: ElevatedButton(
                       style: ElevatedButton.styleFrom(
                         backgroundColor: Colors.transparent,
-        insetPadding: const EdgeInsets.fromLTRB(20, 60, 20, 0), shadowColor: Colors.transparent,
+                        shadowColor: Colors.transparent,
                         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
                         padding: EdgeInsets.zero,
                       ),
@@ -511,9 +506,9 @@ class _CardDetails extends StatelessWidget {
             child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
               Text(card.name, style: GoogleFonts.cairo(color: AppTheme.white, fontSize: 20, fontWeight: FontWeight.w900)),
               const SizedBox(height: 6),
-              Row(children: [Icon(Icons.bolt, color: AppTheme.gold, size: 14), const SizedBox(width: 4),
+              Row(children: [const Icon(Icons.bolt, color: AppTheme.gold, size: 14), const SizedBox(width: 4),
                 Text(card.units, style: GoogleFonts.cairo(color: AppTheme.grey, fontSize: 12))]),
-              Row(children: [Icon(Icons.access_time, color: Colors.blueAccent, size: 14), const SizedBox(width: 4),
+              Row(children: [const Icon(Icons.access_time, color: Colors.blueAccent, size: 14), const SizedBox(width: 4),
                 Text(card.duration, style: GoogleFonts.cairo(color: AppTheme.grey, fontSize: 12))]),
             ]),
           ),
