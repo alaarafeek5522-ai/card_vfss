@@ -17,8 +17,10 @@ class HomeScreen extends StatefulWidget {
 
 class _HomeScreenState extends State<HomeScreen> {
   final List<CardModel> _cards = CardModel.getAll();
+  final ScrollController _scrollCtrl = ScrollController();
   String _search = '';
   bool _isLoading = true;
+  bool _isScrolled = false;
 
   @override
   void initState() {
@@ -26,6 +28,21 @@ class _HomeScreenState extends State<HomeScreen> {
     Future.delayed(const Duration(milliseconds: 600), () {
       if (mounted) setState(() => _isLoading = false);
     });
+    _scrollCtrl.addListener(_onScroll);
+  }
+
+  @override
+  void dispose() {
+    _scrollCtrl.removeListener(_onScroll);
+    _scrollCtrl.dispose();
+    super.dispose();
+  }
+
+  void _onScroll() {
+    final collapsed = _scrollCtrl.offset > 50;
+    if (collapsed != _isScrolled) {
+      setState(() => _isScrolled = collapsed);
+    }
   }
 
   List<CardModel> get _filtered => _cards
@@ -198,6 +215,7 @@ class _HomeScreenState extends State<HomeScreen> {
     return Scaffold(
       backgroundColor: AppTheme.black,
       body: CustomScrollView(
+        controller: _scrollCtrl,
         slivers: [
           SliverAppBar(
             expandedHeight: 130,
@@ -206,8 +224,8 @@ class _HomeScreenState extends State<HomeScreen> {
             flexibleSpace: FlexibleSpaceBar(
               background: _AppBarBg(),
               title: const _ShimmerTitle(),
-              // في المنتصف لما مفتوح، يروح يسار لما يسكرول
-              centerTitle: true,
+              // وسط لما مفتوح، يروح يسار لما يسكرول
+              centerTitle: !_isScrolled,
               titlePadding: const EdgeInsetsDirectional.only(start: 16, bottom: 14),
             ),
             actions: [
