@@ -45,21 +45,29 @@ class _HomeScreenState extends State<HomeScreen> {
         builder: (ctx, setS) => Dialog(
           backgroundColor: Colors.transparent,
           child: Container(
-            decoration: AppTheme.glassCard(borderColor: AppTheme.gold),
+            decoration: BoxDecoration(
+              color: const Color(0xFF1A1A1A),
+              borderRadius: BorderRadius.circular(24),
+              border: Border.all(color: AppTheme.gold.withOpacity(0.4), width: 1.5),
+              boxShadow: [BoxShadow(color: AppTheme.gold.withOpacity(0.15), blurRadius: 30, spreadRadius: 2)],
+            ),
             child: Padding(
               padding: const EdgeInsets.all(24),
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
+                  // أيقونة الكارت في المنتصف
                   Container(
-                    padding: const EdgeInsets.all(16),
+                    width: 80, height: 80,
                     decoration: BoxDecoration(
                       shape: BoxShape.circle,
-                      color: AppTheme.gold.withOpacity(0.15),
-                      border: Border.all(color: AppTheme.gold.withOpacity(0.4), width: 1.5),
+                      color: AppTheme.gold.withOpacity(0.1),
+                      border: Border.all(color: AppTheme.gold.withOpacity(0.4), width: 2),
                       boxShadow: [BoxShadow(color: AppTheme.gold.withOpacity(0.2), blurRadius: 20, spreadRadius: 3)],
                     ),
-                    child: const Icon(Icons.account_balance_wallet_rounded, color: AppTheme.gold, size: 40),
+                    padding: const EdgeInsets.all(14),
+                    child: Image.asset('assets/images/Vodafone.png',
+                      errorBuilder: (_, __, ___) => const Icon(Icons.account_balance_wallet_rounded, color: AppTheme.gold, size: 36)),
                   ),
                   const SizedBox(height: 16),
                   Text('استعلام عن الرصيد',
@@ -194,9 +202,9 @@ class _HomeScreenState extends State<HomeScreen> {
             backgroundColor: AppTheme.black,
             flexibleSpace: FlexibleSpaceBar(
               background: _AppBarBg(),
-              // لما يسكرول لتحت الاسم يروح لليسار
               title: const _ShimmerTitle(),
-              centerTitle: false,
+              // في المنتصف لما مفتوح، يروح يسار لما يسكرول
+              centerTitle: true,
               titlePadding: const EdgeInsetsDirectional.only(start: 16, bottom: 14),
             ),
             actions: [
@@ -435,57 +443,47 @@ class _CardTile extends StatelessWidget {
       child: Container(
         decoration: AppTheme.glassCard(),
         child: Padding(
-          padding: const EdgeInsets.all(12),
+          padding: const EdgeInsets.all(14),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              // الأيقونة + الاسم والوحدات جنب بعض
-              Row(
-                children: [
-                  Container(
-                    width: 42, height: 42,
-                    decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(12),
-                      color: AppTheme.redVF.withOpacity(0.12),
-                      border: Border.all(color: AppTheme.redVF.withOpacity(0.3), width: 1.5)),
-                    padding: const EdgeInsets.all(6),
-                    child: Image.asset('assets/images/card.jpg',
-                      fit: BoxFit.contain,
-                      errorBuilder: (_, __, ___) => Image.asset('assets/images/Vodafone.png',
-                        errorBuilder: (_, __, ___) => const Icon(Icons.credit_card, color: AppTheme.redVF, size: 22))),
-                  ),
-                  const SizedBox(width: 10),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(card.name,
-                          style: GoogleFonts.cairo(color: AppTheme.white, fontSize: 14, fontWeight: FontWeight.bold),
-                          maxLines: 1, overflow: TextOverflow.ellipsis),
-                        const SizedBox(height: 2),
-                        Row(children: [
-                          Icon(Icons.bolt, color: AppTheme.gold, size: 12),
-                          const SizedBox(width: 2),
-                          Expanded(child: Text(card.units,
-                            style: GoogleFonts.cairo(color: AppTheme.grey, fontSize: 11),
-                            maxLines: 1, overflow: TextOverflow.ellipsis)),
-                        ]),
-                      ],
-                    ),
-                  ),
-                ],
+              // الأيقونة فوق
+              Container(
+                width: 42, height: 42,
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(12),
+                  color: AppTheme.redVF.withOpacity(0.12),
+                  border: Border.all(color: AppTheme.redVF.withOpacity(0.3), width: 1.5)),
+                padding: const EdgeInsets.all(6),
+                child: Image.asset('assets/images/card.jpg',
+                  fit: BoxFit.contain,
+                  errorBuilder: (_, __, ___) => Image.asset('assets/images/Vodafone.png',
+                    errorBuilder: (_, __, ___) => const Icon(Icons.credit_card, color: AppTheme.redVF, size: 22))),
               ),
-
+              // الاسم والوحدات تحت الأيقونة
+              Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                Text(card.name,
+                  style: GoogleFonts.cairo(color: AppTheme.white, fontSize: 13, fontWeight: FontWeight.bold),
+                  maxLines: 1, overflow: TextOverflow.ellipsis),
+                const SizedBox(height: 2),
+                Row(children: [
+                  const Icon(Icons.bolt, color: AppTheme.gold, size: 11),
+                  const SizedBox(width: 2),
+                  Expanded(child: Text(card.units,
+                    style: GoogleFonts.cairo(color: AppTheme.grey, fontSize: 10),
+                    maxLines: 1, overflow: TextOverflow.ellipsis)),
+                ]),
+              ]),
               // زرار السعر
               Container(
                 width: double.infinity,
-                padding: const EdgeInsets.symmetric(vertical: 9),
+                padding: const EdgeInsets.symmetric(vertical: 8),
                 decoration: BoxDecoration(
                   gradient: const LinearGradient(colors: [AppTheme.redVF, AppTheme.darkRed]),
                   borderRadius: BorderRadius.circular(10)),
                 child: Text('${card.netCharge} ج',
-                  style: GoogleFonts.cairo(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 14),
+                  style: GoogleFonts.cairo(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 13),
                   textAlign: TextAlign.center)),
             ],
           ),
