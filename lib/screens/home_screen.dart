@@ -194,11 +194,7 @@ class _HomeScreenState extends State<HomeScreen> {
             backgroundColor: AppTheme.black,
             flexibleSpace: FlexibleSpaceBar(
               background: _AppBarBg(),
-              title: _ShimmerTitle(),
-                style: GoogleFonts.cairo(fontSize: 20, fontWeight: FontWeight.w900,
-                  foreground: Paint()..shader = const LinearGradient(
-                    colors: [AppTheme.redVF, AppTheme.gold],
-                  ).createShader(const Rect.fromLTWH(0, 0, 200, 30)))),
+              title: const _ShimmerTitle(),
               centerTitle: true,
             ),
             actions: [
@@ -221,8 +217,7 @@ class _HomeScreenState extends State<HomeScreen> {
               ),
               IconButton(
                 icon: const Icon(Icons.history_rounded, color: AppTheme.white),
-                onPressed: () => Navigator.push(context,
-                    _SlideRoute(page: const HistoryScreen())),
+                onPressed: () => Navigator.push(context, _SlideRoute(page: const HistoryScreen())),
               ),
               IconButton(
                 icon: const Icon(Icons.telegram_rounded, color: AppTheme.gold),
@@ -296,6 +291,49 @@ class _HomeScreenState extends State<HomeScreen> {
               ),
             ),
         ],
+      ),
+    );
+  }
+}
+
+class _ShimmerTitle extends StatefulWidget {
+  const _ShimmerTitle();
+  @override
+  State<_ShimmerTitle> createState() => _ShimmerTitleState();
+}
+
+class _ShimmerTitleState extends State<_ShimmerTitle>
+    with SingleTickerProviderStateMixin {
+  late AnimationController _ctrl;
+
+  @override
+  void initState() {
+    super.initState();
+    _ctrl = AnimationController(vsync: this, duration: const Duration(milliseconds: 1500))..repeat();
+  }
+
+  @override
+  void dispose() { _ctrl.dispose(); super.dispose(); }
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedBuilder(
+      animation: _ctrl,
+      builder: (_, __) => ShaderMask(
+        shaderCallback: (bounds) => LinearGradient(
+          colors: const [AppTheme.redVF, AppTheme.gold, Colors.white, AppTheme.gold, AppTheme.redVF],
+          stops: [
+            0.0,
+            (_ctrl.value - 0.1).clamp(0.0, 1.0),
+            _ctrl.value.clamp(0.0, 1.0),
+            (_ctrl.value + 0.1).clamp(0.0, 1.0),
+            1.0,
+          ],
+          begin: Alignment.centerLeft,
+          end: Alignment.centerRight,
+        ).createShader(bounds),
+        child: Text('Card Vodafone',
+          style: GoogleFonts.cairo(fontSize: 20, fontWeight: FontWeight.w900, color: Colors.white)),
       ),
     );
   }
@@ -391,8 +429,7 @@ class _CardTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return GestureDetector(
-      onTap: () => Navigator.push(context,
-          _SlideRoute(page: ChargeScreen(card: card))),
+      onTap: () => Navigator.push(context, _SlideRoute(page: ChargeScreen(card: card))),
       child: Container(
         decoration: AppTheme.glassCard(),
         child: Padding(
@@ -457,46 +494,4 @@ class _SlideRoute extends PageRouteBuilder {
     },
     transitionDuration: const Duration(milliseconds: 350),
   );
-}
-
-class _ShimmerTitle extends StatefulWidget {
-  @override
-  State<_ShimmerTitle> createState() => _ShimmerTitleState();
-}
-
-class _ShimmerTitleState extends State<_ShimmerTitle>
-    with SingleTickerProviderStateMixin {
-  late AnimationController _ctrl;
-
-  @override
-  void initState() {
-    super.initState();
-    _ctrl = AnimationController(vsync: this, duration: const Duration(milliseconds: 1500))..repeat();
-  }
-
-  @override
-  void dispose() { _ctrl.dispose(); super.dispose(); }
-
-  @override
-  Widget build(BuildContext context) {
-    return AnimatedBuilder(
-      animation: _ctrl,
-      builder: (_, __) => ShaderMask(
-        shaderCallback: (bounds) => LinearGradient(
-          colors: const [AppTheme.redVF, AppTheme.gold, Colors.white, AppTheme.gold, AppTheme.redVF],
-          stops: [
-            0.0,
-            (_ctrl.value - 0.1).clamp(0.0, 1.0),
-            _ctrl.value.clamp(0.0, 1.0),
-            (_ctrl.value + 0.1).clamp(0.0, 1.0),
-            1.0,
-          ],
-          begin: Alignment.centerLeft,
-          end: Alignment.centerRight,
-        ).createShader(bounds),
-        child: Text('Card Vodafone',
-          style: GoogleFonts.cairo(fontSize: 20, fontWeight: FontWeight.w900, color: Colors.white)),
-      ),
-    );
-  }
 }
